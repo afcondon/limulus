@@ -1,0 +1,28 @@
+package:
+  name: tidal-client
+  description: >
+    Text in, sound out: one editor in front of Haskell Tidal (GHCi) or
+    purerl-tidal, to show that they are the same.
+  dependencies:
+    - prelude
+    - aff
+    - aff-promise
+    - arrays
+    - binnacle
+    - effect
+    - either
+    - foldable-traversable
+    - halogen
+    - halogen-subscriptions
+    - js-timers
+    - maybe
+    - strings
+    - tailrec
+    - web-dom
+    - web-html
+workspace:
+  extraPackages:
+    binnacle:
+      path: ../binnacle
+  packageSet:
+    registry: 77.13.1

@@ -1,0 +1,4 @@
+node_modules/
+output/
+.spago/
+ghc-tidal

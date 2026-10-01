@@ -1,0 +1,110 @@
+/* Tidal — Calypso's Matrix CRT look, cut down to one editor and a log.
+   Black on phosphor green, monospace throughout; the code is the picture. */
+
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg:        #000000;
+  --bg-elev:   #0a120a;
+  --fg:        #41ff7c;
+  --fg-bright: #9bffb6;
+  --fg-dim:    #1f6e3a;
+  --fg-rule:   #103019;
+  --amber:     #ffb84a;
+  --red:       #ff5a4d;
+  --cyan:      #4afff0;
+  --mono:      "VT323", "Share Tech Mono", Menlo, monospace;
+  --code:      "Share Tech Mono", "JetBrains Mono", Menlo, monospace;
+  --glow:      0 0 4px rgba(65, 255, 124, 0.55);
+}
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 18px;
+  text-shadow: var(--glow);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  background: repeating-linear-gradient(to bottom,
+    rgba(0, 255, 100, 0.03) 0 1px, transparent 1px 3px);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  text-shadow: inherit;
+  background: none;
+  border: 1px solid var(--fg-dim);
+  padding: 2px 12px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--fg); color: var(--fg-bright); }
+
+.page { display: flex; flex-direction: column; height: 100vh; }
+
+/* ---------------------------------------------------------------- bar */
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--fg-rule);
+  flex-wrap: wrap;
+}
+.bar h1 { margin: 0; font-size: 34px; font-weight: normal; color: var(--fg-bright); letter-spacing: 2px; }
+.motto { color: var(--fg-dim); }
+.engines { display: flex; gap: 0; margin-left: auto; }
+.engine { display: flex; align-items: center; gap: 8px; color: var(--fg-dim); }
+.engine + .engine { border-left: none; }
+.engine.on { color: var(--bg); background: var(--fg); text-shadow: none; border-color: var(--fg); }
+.lamp { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-rule); }
+.lamp-up .lamp { background: var(--fg); box-shadow: var(--glow); }
+.lamp-booting .lamp { background: var(--amber); }
+.lamp-down .lamp { background: var(--red); }
+.engine.on .lamp { box-shadow: none; outline: 1px solid var(--bg); }
+.hush { border-color: var(--red); color: var(--red); }
+.hush:hover { background: var(--red); color: var(--bg); text-shadow: none; }
+
+/* ---------------------------------------------------------------- main */
+
+main { flex: 1; display: flex; min-height: 0; }
+.editor { flex: 3; min-width: 0; overflow: auto; border-right: 1px solid var(--fg-rule); }
+.log { flex: 2; min-width: 0; overflow: auto; padding: 8px 16px; }
+
+.cm-editor { height: 100%; background: var(--bg); color: var(--fg); font-family: var(--code); font-size: 16px; }
+.cm-editor.cm-focused { outline: none; }
+.cm-content { caret-color: var(--fg-bright); padding: 12px 0; }
+.cm-cursor { border-left: 2px solid var(--fg-bright) !important; }
+.cm-gutters { background: var(--bg); color: var(--fg-dim); border-right: 1px solid var(--fg-rule); }
+.cm-activeLine, .cm-activeLineGutter { background: var(--bg-elev); }
+.cm-selectionBackground, .cm-focused .cm-selectionBackground { background: #12401f !important; }
+.cm-flash { background: var(--fg); color: var(--bg); text-shadow: none; }
+
+.entry { border-left: 2px solid var(--fg-dim); padding: 2px 0 2px 10px; margin-bottom: 12px; }
+.entry.ok { border-color: var(--fg); }
+.entry.err { border-color: var(--red); }
+.entry.waiting { border-color: var(--amber); }
+.who { color: var(--fg-dim); font-size: 15px; }
+.entry pre { margin: 2px 0; font-family: var(--code); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+.block { color: var(--fg-bright); }
+.reply { color: var(--fg-dim); }
+.err .reply { color: var(--red); }
+
+footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--fg-dim); font-size: 16px; }
+.link { border: none; padding: 0; text-decoration: underline; color: var(--fg-dim); }
+
+@media (max-width: 720px) {
+  main { flex-direction: column; }
+  .editor { border-right: none; border-bottom: 1px solid var(--fg-rule); }
+  .engines { margin-left: 0; }
+}

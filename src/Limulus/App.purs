@@ -11,7 +11,7 @@ import Control.Monad.Rec.Class (forever)
 import Data.Array (cons, snoc, take, uncons)
 import Data.Foldable (for_, traverse_)
 import Data.Maybe (Maybe(..), isJust, maybe)
-import Data.String (Pattern(..), stripPrefix, trim)
+import Data.String (Pattern(..), stripPrefix)
 import Effect.Aff (Aff, Milliseconds(..), delay)
 import Effect.Class (liftEffect)
 import Halogen as H
@@ -173,7 +173,7 @@ handleAction = case _ of
   Hush -> do
     void $ H.fork $ void $ H.liftAff (Engine.ghciEval "hush")
     st <- H.get
-    for_ st.socket \ws -> liftEffect (Engine.send ws "hush")
+    for_ st.socket \ws -> liftEffect (Engine.send ws (Engine.purerlBlock "hush"))
     H.modify_ \s -> s { pending = [] }
 
   SetEngine e -> H.modify_ _ { engine = e }
@@ -224,7 +224,7 @@ sendPurerl :: forall o. Int -> String -> M o Unit
 sendPurerl id block = do
   st <- H.get
   sent <- case st.socket of
-    Just ws -> liftEffect (Engine.send ws (trim block))
+    Just ws -> liftEffect (Engine.send ws (Engine.purerlBlock block))
     Nothing -> pure false
   if sent then H.modify_ \s -> s { pending = snoc s.pending id }
   else handleAction (Answered id { ok: false, out: "purerl-tidal is not connected (ws :3012)" })

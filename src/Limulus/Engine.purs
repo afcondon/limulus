@@ -2,8 +2,9 @@
 -- |
 -- | **Haskell Tidal** runs in GHCi behind this app's own server, which types
 -- | each block in and returns what GHCi printed. **purerl-tidal** is reached
--- | over its WebSocket on :3012, as every Atlantis page reaches it; it answers
--- | each frame with one reply frame, in order.
+-- | over its WebSocket on :3012, as every Atlantis page reaches it, with each
+-- | block sent as `tidal <block>`; it answers each frame with one reply frame,
+-- | in order.
 module Limulus.Engine
   ( Engine(..)
   , engineName
@@ -15,11 +16,14 @@ module Limulus.Engine
   , Socket
   , SocketCallbacks
   , purerlUrl
+  , purerlBlock
   , connect
   , send
   ) where
 
 import Prelude
+
+import Data.String (trim)
 
 import Control.Promise (Promise, toAffE)
 import Effect (Effect)
@@ -69,6 +73,11 @@ type SocketCallbacks =
 
 purerlUrl :: String
 purerlUrl = "ws://localhost:3012/ws"
+
+-- | A block as purerl-tidal's `tidal` verb takes it. Its `hush` is Tidal's,
+-- | the d1..d16 streams only; a bare `hush` would stop the whole rig.
+purerlBlock :: String -> String
+purerlBlock block = "tidal " <> trim block
 
 foreign import _connect :: EffectFn2 String SocketCallbacks Socket
 foreign import _send :: EffectFn2 Socket String Boolean

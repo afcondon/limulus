@@ -17,13 +17,16 @@ module Limulus.Engine
   , SocketCallbacks
   , purerlUrl
   , purerlBlock
+  , machineLine
   , connect
   , send
   ) where
 
 import Prelude
 
-import Data.String (trim)
+import Data.Array (elem, head)
+import Data.Maybe (fromMaybe)
+import Data.String (Pattern(..), split, trim)
 
 import Control.Promise (Promise, toAffE)
 import Effect (Effect)
@@ -76,6 +79,15 @@ purerlUrl = "ws://localhost:3012/ws"
 
 -- | A block as purerl-tidal's `tidal` verb takes it. Its `hush` is Tidal's,
 -- | the d1..d16 streams only; a bare `hush` would stop the whole rig.
+-- | A line addressed to one of the rig's machines (`odonus $ unison # phase 2`)
+-- | rather than to Tidal. Only purerl-tidal has the machines, so such a block
+-- | goes there whichever engine is selected; it is not Tidal, so it is no part
+-- | of the comparison either.
+machineLine :: String -> Boolean
+machineLine block = firstWord `elem` [ "odonus" ]
+  where
+  firstWord = fromMaybe "" (head (split (Pattern " ") (trim block)))
+
 purerlBlock :: String -> String
 purerlBlock block = "tidal " <> trim block
 

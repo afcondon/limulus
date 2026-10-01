@@ -162,9 +162,11 @@ handleAction = case _ of
 
   Eval block -> do
     st <- H.get
-    let id = st.nextId
-    H.modify_ _ { nextId = id + 1, log = take 60 (cons { id, engine: st.engine, block, reply: Nothing } st.log) }
-    case st.engine of
+    let
+      id = st.nextId
+      engine = if Engine.machineLine block then Purerl else st.engine
+    H.modify_ _ { nextId = id + 1, log = take 60 (cons { id, engine, block, reply: Nothing } st.log) }
+    case engine of
       Ghci -> do
         reply <- H.liftAff (Engine.ghciEval block)
         handleAction (Answered id reply)

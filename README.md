@@ -1,8 +1,12 @@
-# tidal-client
+# Limulus
+
+*Limulus polyphemus*, the horseshoe crab, comes out of the water to spawn at
+the highest tides, on the nights the moon chooses: older than the fish, and on
+Tidal's clock.
 
 Text in, sound out. One editor in front of two engines, **Haskell Tidal**
 (GHCi) and **purerl-tidal**, to show that they are the same. Plan and
-reasoning: `docs/kb/plans/tidal-client.md`.
+reasoning: `docs/kb/plans/limulus.md (in the private afc-work docs)`.
 
 Cmd-Enter (or Shift-Enter) sends the block under the cursor, as Tidal's own
 editors do; Cmd-. hushes both engines. Panic from any Atlantis page hushes
@@ -13,7 +17,7 @@ them too.
 ```
 nix build --impure --expr '(builtins.getFlake "nixpkgs").legacyPackages.aarch64-darwin.haskellPackages.ghcWithPackages (p: [p.tidal])' -o ghc-tidal
 npm install
-npm run bundle      # spago bundle → public/app.js (add --minify)
+npm run bundle      # spago bundle → public/app.js
 node server.mjs     # :3036, boots GHCi with boot/BootTidal.hs
 ```
 

@@ -4,7 +4,7 @@
 -- | each block in and returns what GHCi printed. **purerl-tidal** is reached
 -- | over its WebSocket on :3012, as every Atlantis page reaches it; it answers
 -- | each frame with one reply frame, in order.
-module Tidal.Client.Engine
+module Limulus.Engine
   ( Engine(..)
   , engineName
   , Reply

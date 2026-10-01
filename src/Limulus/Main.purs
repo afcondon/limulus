@@ -1,11 +1,11 @@
-module Tidal.Client.Main (main) where
+module Limulus.Main (main) where
 
 import Prelude
 
 import Effect (Effect)
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
-import Tidal.Client.App as App
+import Limulus.App as App
 
 main :: Effect Unit
 main = HA.runHalogenAff do

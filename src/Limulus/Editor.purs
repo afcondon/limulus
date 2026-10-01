@@ -4,7 +4,7 @@
 -- | selection, or the run of non-blank lines around the cursor; Cmd-Enter
 -- | (or Shift-Enter) sends it, Cmd-. hushes. Which engine hears it is not its
 -- | business. The buffer is kept in this browser between visits.
-module Tidal.Client.Editor
+module Limulus.Editor
   ( Editor
   , Handlers
   , create

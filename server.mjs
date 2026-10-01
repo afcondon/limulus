@@ -1,4 +1,4 @@
-// The Tidal client's server: the page, and Haskell Tidal behind it.
+// Limulus's server: the page, and Haskell Tidal behind it.
 //
 // The browser cannot start GHCi, so this does, the way Tidal's own editors
 // do: one long-lived `ghci` booted with BootTidal.hs, and each block the page
@@ -116,7 +116,7 @@ createServer(async (req, res) => {
     res.end("not found");
   }
 }).listen(PORT, () => {
-  console.log(`tidal-client on :${PORT}`);
+  console.log(`limulus on :${PORT}`);
   start(); // Tidal takes seconds to boot; do it before the first block.
 });
 

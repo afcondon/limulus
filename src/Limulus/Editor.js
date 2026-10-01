@@ -5,7 +5,7 @@ import { bracketMatching, StreamLanguage, syntaxHighlighting, HighlightStyle } f
 import { haskell } from "@codemirror/legacy-modes/mode/haskell";
 import { tags as t } from "@lezer/highlight";
 
-const STORE = "tidal-client.buffer";
+const STORE = "limulus.buffer";
 
 // Calypso's phosphor palette, by role rather than by token.
 const style = HighlightStyle.define([

@@ -1,7 +1,7 @@
 {
   "workspace": {
     "packages": {
-      "tidal-client": {
+      "limulus": {
         "path": "./",
         "core": {
           "dependencies": [

@@ -3,7 +3,7 @@
 -- | The same buffer can be sent to Haskell Tidal or to purerl-tidal; that is
 -- | the point of the page. Hush silences both, since a flipped buffer can
 -- | leave the other engine playing, and so does Panic from any Atlantis page.
-module Tidal.Client.App (component) where
+module Limulus.App (component) where
 
 import Prelude
 
@@ -20,9 +20,9 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
 import Binnacle.TabBus as Bus
-import Tidal.Client.Editor as Editor
-import Tidal.Client.Engine (Engine(..), GhciState(..), Reply, Socket, engineName)
-import Tidal.Client.Engine as Engine
+import Limulus.Editor as Editor
+import Limulus.Engine (Engine(..), GhciState(..), Reply, Socket, engineName)
+import Limulus.Engine as Engine
 import Web.HTML.HTMLElement as HTMLElement
 
 type Entry =
@@ -89,7 +89,7 @@ render :: forall m. State -> H.ComponentHTML Action () m
 render st =
   HH.div [ HP.class_ (H.ClassName "page") ]
     [ HH.header [ HP.class_ (H.ClassName "bar") ]
-        [ HH.h1_ [ HH.text "tidal" ]
+        [ HH.h1_ [ HH.text "limulus" ]
         , HH.span [ HP.class_ (H.ClassName "motto") ] [ HH.text "text in, sound out" ]
         , HH.div [ HP.class_ (H.ClassName "engines") ]
             [ engineButton st Ghci (ghciLamp st.ghci)

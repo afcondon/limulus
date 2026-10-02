@@ -93,6 +93,8 @@ stageLine block = do
     -- a cue for the rig
     "vetula" | isJust (stripPrefix (Pattern "ch") body) -> Just Nothing
     "vetula" -> Nothing
+    -- `conspicillum $ hush` is for the rig, not a line
+    "conspicillum" | body == "hush" -> Nothing
     "conspicillum" -> Just (Just Cloud)
     _ -> Just <$> (Card <$> (stripPrefix (Pattern "v") head >>= Int.fromString))
   pure { obj, body }

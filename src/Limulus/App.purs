@@ -113,7 +113,7 @@ render st =
             ]
             [ HH.text "cheatsheet" ]
         , HH.button
-            [ HP.class_ (H.ClassName "hush"), HE.onClick \_ -> Hush, HP.title "Silence both engines (Cmd-.)" ]
+            [ HP.class_ (H.ClassName "hush"), HE.onClick \_ -> Hush, HP.title "Silence everything: both engines and every machine on the rig (Cmd-.)" ]
             [ HH.text "hush" ]
         ]
     , HH.main_
@@ -121,7 +121,7 @@ render st =
         , HH.aside [ HP.class_ (H.ClassName "log") ] (map entry st.log)
         ]
     , HH.footer_
-        [ HH.text "⌘↵ evaluate block · ⌘. hush both · "
+        [ HH.text "⌘↵ evaluate block · ⌘. hush everything · "
         , HH.button [ HP.class_ (H.ClassName "link"), HE.onClick \_ -> RestartGhci ]
             [ HH.text "restart GHCi" ]
         ]

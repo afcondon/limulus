@@ -77,8 +77,8 @@ type SocketCallbacks =
 purerlUrl :: String
 purerlUrl = "ws://localhost:3012/ws"
 
--- | A block as purerl-tidal's `tidal` verb takes it. Its `hush` is Tidal's,
--- | the d1..d16 streams only; a bare `hush` would stop the whole rig.
+-- | A block as purerl-tidal's `tidal` verb takes it. Its `hush` stops all
+-- | sound on the rig, machines included; `odonus $ hush` and the like stop one.
 -- | A line addressed to one of the rig's machines (`odonus $ unison # phase 2`)
 -- | rather than to Tidal, or a cue for one (`vetula $ mark`, `odonus $ loop 2`:
 -- | its Review surface). Only purerl-tidal has the machines, so such a block
@@ -86,7 +86,7 @@ purerlUrl = "ws://localhost:3012/ws"
 -- | of the comparison either. `drums $ s "bd*2 sn"` is Tidal, but played on the
 -- | drum kit through the rig's drum routing, which GHCi has no way to reach.
 machineLine :: String -> Boolean
-machineLine block = firstWord `elem` [ "odonus", "vetula", "drums" ]
+machineLine block = firstWord `elem` [ "odonus", "vetula", "drums", "conspicillum", "balistes" ]
   where
   firstWord = fromMaybe "" (head (split (Pattern " ") (trim block)))
 

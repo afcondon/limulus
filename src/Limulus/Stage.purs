@@ -17,11 +17,13 @@ module Limulus.Stage
   , isStageFrame
   , freeCard
   , bodyOf
+  , cardBlock
   ) where
 
 import Prelude
 
 import Data.Array (any, filter, find, mapMaybe, range)
+import Data.Array as Array
 import Data.Either (hush)
 import Data.Int as Int
 import Data.Map (Map)
@@ -99,6 +101,23 @@ readFrame msg =
   orElse a b = case a of
     Just _ -> a
     Nothing -> b
+
+-- | A card's line as a block, broken where the card breaks it: the sequence
+-- | on the head line, then each `# layer` (and each layer's gate) on its own,
+-- | indented as a Tidal continuation. `#` inside quotes is not a break.
+-- | (`bodyOf` joins the lines again, so the stage still holds one line.)
+cardBlock :: Int -> String -> String
+cardBlock n line = "v" <> show n <> " $ " <> joinWith "\n  # " (splitHashes line)
+
+splitHashes :: String -> Array String
+splitHashes line = map trim (go [] "" false (CU.toCharArray line))
+  where
+  go acc cur quoted cs = case Array.uncons cs of
+    Nothing -> acc <> [ cur ]
+    Just { head: c, tail }
+      | c == '"' -> go acc (cur <> CU.singleton c) (not quoted) tail
+      | c == '#' && not quoted -> go (acc <> [ cur ]) "" quoted tail
+      | otherwise -> go acc (cur <> CU.singleton c) quoted tail
 
 -- | The smallest card number neither on the stage nor heading a block.
 freeCard :: Map Int String -> (Int -> Boolean) -> Int

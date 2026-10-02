@@ -298,7 +298,7 @@ stageFrame = case _ of
         Nothing -> note n "removed in Vetula; this block no longer names a card" false
         Just t
           | Stage.bodyOf blk.text == t -> pure unit
-          | Just (Stage.bodyOf blk.text) == prev -> liftEffect (Editor.replace ed blk.from blk.to ("v" <> show n <> " $ " <> t))
+          | Just (Stage.bodyOf blk.text) == prev -> liftEffect (Editor.replace ed blk.from blk.to (Stage.cardBlock n t))
           -- what the block was last in step with is unknown (it was refused):
           -- keep the typing, to be fixed and evaluated again
           | prev == Nothing -> pure unit
@@ -309,7 +309,7 @@ stageFrame = case _ of
       mblock <- liftEffect (Editor.findBlock ed ("v" <> show n))
       case mblock, Map.lookup n st.cards of
         Just blk, _ -> liftEffect (Editor.reveal ed blk.from blk.to)
-        Nothing, Just t -> liftEffect (Editor.append ed ("v" <> show n <> " $ " <> t))
+        Nothing, Just t -> liftEffect (Editor.append ed (Stage.cardBlock n t))
         Nothing, Nothing -> note n "Vetula asked to show it, but the stage has no such card" false
   -- A refused block is left as typed: forget what the stage said for it, so
   -- the card's real line, republished by Vetula, does not overwrite it.

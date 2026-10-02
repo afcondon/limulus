@@ -80,11 +80,12 @@ purerlUrl = "ws://localhost:3012/ws"
 -- | A block as purerl-tidal's `tidal` verb takes it. Its `hush` is Tidal's,
 -- | the d1..d16 streams only; a bare `hush` would stop the whole rig.
 -- | A line addressed to one of the rig's machines (`odonus $ unison # phase 2`)
--- | rather than to Tidal. Only purerl-tidal has the machines, so such a block
+-- | rather than to Tidal, or a cue for one (`vetula $ mark`, `odonus $ loop 2`:
+-- | its Review surface). Only purerl-tidal has the machines, so such a block
 -- | goes there whichever engine is selected; it is not Tidal, so it is no part
 -- | of the comparison either.
 machineLine :: String -> Boolean
-machineLine block = firstWord `elem` [ "odonus" ]
+machineLine block = firstWord `elem` [ "odonus", "vetula" ]
   where
   firstWord = fromMaybe "" (head (split (Pattern " ") (trim block)))
 

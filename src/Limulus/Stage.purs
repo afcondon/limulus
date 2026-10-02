@@ -49,7 +49,10 @@ cardLine block = do
     head = trim (CU.take at block)
     body = bodyOf block
   card <- case head of
-    "vetula" -> Just Nothing
+    -- `vetula $ ch…` is a new card; any other `vetula $` line (mark, loop) is
+    -- a cue for the rig
+    "vetula" | isJust (stripPrefix (Pattern "ch") body) -> Just Nothing
+    "vetula" -> Nothing
     _ -> Just <$> (stripPrefix (Pattern "v") head >>= Int.fromString)
   pure { card, body }
 

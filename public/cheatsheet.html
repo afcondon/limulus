@@ -107,7 +107,8 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
   <p class="lede">Real Tidal, on the same clock as <code>d1</code>. Each event hits a lane of the drum kit and goes through the drum routing table: Ableton, FH-2 gates, Rample, sample voices.</p>
 <pre class="copy">drums $ s "bd*2 [~ sn] &lt;hh*4 hh*8&gt;" # gain "1 0.7"</pre>
 <pre class="copy">drums $ fast "&lt;1 2&gt;" $ s "bd ~ [~ bd] ~, ~ cp, hh*8?" # velocity "0.6 0.9"</pre>
-  <p class="dim" style="margin:0 0 10px;font-size:16px">Architeuthis's Tidal, a subset that is growing: <code>every</code> is not in it yet.</p>
+<pre class="copy">drums $ every "&lt;2 3&gt;" (fast 2) $ s "bd [~ sn] hh*2"</pre>
+  <p class="dim" style="margin:0 0 10px;font-size:16px">Architeuthis's Tidal, a subset that is growing, held to Tidal 1.10.1 case for case: <code>fast</code>, <code>slow</code>, <code>rev</code>, <code>every</code>, <code>scale</code> and the controls.</p>
   <table>
     <tr><td><code>s "bd"</code></td><td class="gloss">the lane, by name (see below). Unknown names play nothing.</td></tr>
     <tr><td><code>n "36 42"</code></td><td class="gloss">with no <code>s</code>: the MIDI note itself</td></tr>

@@ -1,4 +1,4 @@
-import { EditorView, keymap, lineNumbers, drawSelection, Decoration } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers, drawSelection, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view";
 import { EditorState, StateField, StateEffect } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab, toggleLineComment } from "@codemirror/commands";
 import { bracketMatching, StreamLanguage, syntaxHighlighting, HighlightStyle } from "@codemirror/language";
@@ -24,6 +24,20 @@ const dark = EditorView.theme({
   ".cm-gutters": { backgroundColor: "var(--bg)", color: "var(--fg-dim)", borderRight: "1px solid var(--fg-rule)" },
   ".cm-activeLineGutter": { backgroundColor: "var(--bg-elev)" },
 }, { dark: true });
+
+// A line's head word, when it addresses the rig rather than Tidal (`drums $`,
+// `odonus $`, `vetula $`, a card `v3 $`), shown inverted: phosphor on black is
+// Tidal, black on phosphor is the rig's own language (Limulus.Engine's
+// machineLine and the card blocks). Inversion rather than a colour, since the
+// palette is already as green as it should be.
+const rigHead = new MatchDecorator({
+  regexp: /(?<=^\s*)(?:drums|odonus|vetula|v\d+)(?=\s*\$)/g,
+  decoration: Decoration.mark({ class: "cm-rig-head" }),
+});
+const rigHeads = ViewPlugin.fromClass(class {
+  constructor(view) { this.decorations = rigHead.createDeco(view); }
+  update(u) { this.decorations = rigHead.updateDeco(u, this.decorations); }
+}, { decorations: (v) => v.decorations });
 
 // The block that was just sent lights up briefly, as in Tidal's editors.
 const flash = StateEffect.define();
@@ -98,6 +112,7 @@ export const _create = (parent, initial, handlers) => {
         syntaxHighlighting(style),
         dark,
         flashField,
+        rigHeads,
         EditorView.updateListener.of((u) => { if (u.docChanged) save(u.state.doc.toString()); }),
       ],
     }),

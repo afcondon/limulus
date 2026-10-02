@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Limulus Cheatsheet</title>
+<!-- Prototype (2026-10-02): everything the rig adds to plain Tidal, in one
+     page. Meant to become a panel in Limulus itself; the grammar it describes
+     lives in reef (Reef.Move, Reef.Vetula.Lepidoptera, Reef.Balistes.Kit) and
+     purerl-tidal (Tidal.DrumVoice, the line handler). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000; --bg-elev: #0a120a;
+  --fg: #41ff7c; --fg-bright: #9bffb6; --fg-dim: #1f6e3a; --fg-rule: #103019;
+  --amber: #ffb84a; --cyan: #4afff0;
+  --mono: "VT323", "Share Tech Mono", Menlo, monospace;
+  --code: "Share Tech Mono", "JetBrains Mono", Menlo, monospace;
+  --glow: 0 0 4px rgba(65, 255, 124, 0.55);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--mono); font-size: 19px; line-height: 1.25;
+  text-shadow: var(--glow);
+  padding: 28px 16px 64px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 10;
+  background: repeating-linear-gradient(to bottom, rgba(0,255,100,.03) 0 1px, transparent 1px 3px);
+}
+main { max-width: 1240px; margin: 0 auto; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 24px; border-bottom: 1px solid var(--fg-rule); padding-bottom: 14px; margin-bottom: 22px; }
+h1 { font-size: 46px; font-weight: normal; margin: 0; color: var(--fg-bright); letter-spacing: .04em; }
+header p { margin: 0; color: var(--fg-dim); max-width: 60ch; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 16px; color: var(--fg-dim); margin: 0 0 20px; }
+.tag { font-size: 14px; padding: 0 6px; border: 1px solid currentColor; border-radius: 2px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.tag.rig { color: var(--amber); }
+.tag.both { color: var(--cyan); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 18px; }
+section { background: var(--bg-elev); border: 1px solid var(--fg-rule); padding: 14px 16px 16px; min-width: 0; }
+section.wide { grid-column: 1 / -1; }
+h2 { font-size: 27px; font-weight: normal; margin: 0 0 4px; color: var(--fg-bright); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.lede { color: var(--fg-dim); margin: 0 0 12px; font-size: 17px; }
+pre, code { font-family: var(--code); }
+pre {
+  margin: 8px 0 12px; padding: 8px 10px; background: #000; border-left: 2px solid var(--fg-dim);
+  font-size: 14.5px; line-height: 1.5; color: var(--fg-bright); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+table { width: 100%; border-collapse: collapse; font-size: 16.5px; }
+td { padding: 3px 0; vertical-align: top; border-top: 1px solid var(--fg-rule); }
+td:first-child { width: 44%; padding-right: 12px; }
+td code { font-size: 14px; color: var(--fg-bright); overflow-wrap: anywhere; }
+td.gloss { color: var(--fg); }
+.dim { color: var(--fg-dim); }
+h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2px; letter-spacing: .05em; text-transform: uppercase; }
+.names { font-family: var(--code); font-size: 13.5px; line-height: 1.7; color: var(--fg); word-spacing: 6px; }
+.copy { cursor: copy; }
+.copy:hover { background: #041a0a; }
+.toast { position: fixed; bottom: 16px; right: 16px; background: var(--bg-elev); border: 1px solid var(--fg-dim); padding: 4px 10px; opacity: 0; transition: opacity .2s; z-index: 20; }
+.toast.on { opacity: 1; }
+@media (max-width: 600px) {
+  body { font-size: 17px; }
+  h1 { font-size: 36px; }
+  td:first-child { width: 50%; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>LIMULUS · beyond Tidal</h1>
+  <p>Everything the rig adds to plain Tidal 1.10. Click any example to copy it.</p>
+</header>
+
+<div class="legend">
+  <span><span class="tag both">both</span> runs on either engine, the same</span>
+  <span><span class="tag rig">rig</span> goes to purerl-tidal whichever engine is selected</span>
+</div>
+
+<div class="grid">
+
+<section>
+  <h2>Where a block goes</h2>
+  <p class="lede">The first word decides.</p>
+  <table>
+    <tr><td><code>d1 $ … </code> · <code>hush</code> · <code>setcps</code></td><td class="gloss">plain Tidal, to the selected engine (GHCi or purerl-tidal) <span class="tag both">both</span></td></tr>
+    <tr><td><code>drums $ …</code></td><td class="gloss">Tidal, played on the drum kit <span class="tag rig">rig</span></td></tr>
+    <tr><td><code>odonus $ …</code></td><td class="gloss">a move for Odonus, or a Review cue <span class="tag rig">rig</span></td></tr>
+    <tr><td><code>v3 $ …</code> · <code>vetula $ ch…</code></td><td class="gloss">a Vetula card, written to the stage <span class="tag rig">rig</span></td></tr>
+    <tr><td><code>vetula $ mark</code> …</td><td class="gloss">a Review cue for Vetula <span class="tag rig">rig</span></td></tr>
+  </table>
+  <h3>hush</h3>
+  <p class="dim" style="margin:0">Tidal's <code>hush</code> silences <code>d1</code>…<code>d16</code> and <code>drums</code>. It leaves the machines alone.</p>
+</section>
+
+<section>
+  <h2>Drums <span class="tag rig">rig</span></h2>
+  <p class="lede">Real Tidal, on the same clock as <code>d1</code>. Each event hits a lane of the drum kit and goes through the drum routing table: Ableton, FH-2 gates, Rample, sample voices.</p>
+<pre class="copy">drums $ s "bd*2 [~ sn] &lt;hh*4 hh*8&gt;" # gain "1 0.7"</pre>
+<pre class="copy">drums $ fast "&lt;1 2&gt;" $ s "bd ~ [~ bd] ~, ~ cp, hh*8?" # velocity "0.6 0.9"</pre>
+  <p class="dim" style="margin:0 0 10px;font-size:16px">purerl-tidal's Tidal, a subset that is growing: <code>every</code> is not in it yet.</p>
+  <table>
+    <tr><td><code>s "bd"</code></td><td class="gloss">the lane, by name (see below). Unknown names play nothing.</td></tr>
+    <tr><td><code>n "36 42"</code></td><td class="gloss">with no <code>s</code>: the MIDI note itself</td></tr>
+    <tr><td><code>velocity 0.8</code></td><td class="gloss">0..1, the default 0.8; times <code>gain</code> (default 1)</td></tr>
+    <tr><td><code>sustain 0.2</code></td><td class="gloss">gate in seconds</td></tr>
+    <tr><td><code>legato 1</code></td><td class="gloss">gate as a share of the event; with neither, a 30 ms trigger</td></tr>
+  </table>
+  <h3>Lanes</h3>
+  <table>
+    <tr><td><code>bd</code> <code>kick</code></td><td class="gloss">bass drum · 36</td></tr>
+    <tr><td><code>sd</code> <code>sn</code> <code>snare</code></td><td class="gloss">snare · 38</td></tr>
+    <tr><td><code>cp</code> <code>clap</code> · <code>rs</code> <code>rim</code></td><td class="gloss">clap · 39 · rim 37</td></tr>
+    <tr><td><code>ch</code> <code>hh</code> <code>hat</code> · <code>ph</code> · <code>oh</code></td><td class="gloss">closed 42 · pedal 44 · open 46</td></tr>
+    <tr><td><code>lt</code> <code>mt</code> <code>ht</code></td><td class="gloss">toms · 41 47 50</td></tr>
+    <tr><td><code>rd</code> <code>ride</code> · <code>rb</code> · <code>cr</code> <code>crash</code></td><td class="gloss">ride 51 · bell 53 · crash 49</td></tr>
+    <tr><td><code>cw</code> <code>cb</code> · <code>tb</code> <code>tamb</code> · <code>sh</code> <code>shaker</code></td><td class="gloss">cowbell 56 · tambourine 54 · shaker 70</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Odonus moves <span class="tag rig">rig</span></h2>
+  <p class="lede">Several gestures landing on one step. Not Tidal, but its operators: <code>#</code> chains left to right; <code>.</code> composes as Haskell does.</p>
+<pre class="copy">odonus $ unison # phase 2</pre>
+<pre class="copy">odonus $ for 4 (mutate notes 30)</pre>
+  <table>
+    <tr><td><code>unison</code></td><td class="gloss">all heads to one</td></tr>
+    <tr><td><code>phase N</code> · <code>stagger N</code></td><td class="gloss">fan the offsets · fan the lengths</td></tr>
+    <tr><td><code>notes low|mid|melody|roll</code></td><td class="gloss">reset or reseed the cells</td></tr>
+    <tr><td><code>mutate KIND [AMOUNT]</code></td><td class="gloss">turn a generator on</td></tr>
+    <tr><td><code>still [KIND]</code></td><td class="gloss">turn one (or all) off</td></tr>
+    <tr><td><code>rate KIND N</code></td><td class="gloss">how often a generator acts</td></tr>
+    <tr><td><code>freeze</code> · <code>thaw</code></td><td class="gloss">hold the cells</td></tr>
+    <tr><td><code>gate PERCENT</code></td><td class="gloss">gate length</td></tr>
+    <tr><td><code>pattern</code> · <code>transp</code> · <code>len</code> · <code>offset</code> <code>N N N N</code></td><td class="gloss">per head, one number each (patterns count from 1)</td></tr>
+    <tr><td><code>for BARS (MOVE)</code></td><td class="gloss">then restore the settings; the notes found are kept</td></tr>
+  </table>
+  <p class="dim" style="margin:8px 0 0">KIND: <code>notes gate skip glide len ratchet heads transp pattern speed key vel</code></p>
+</section>
+
+<section>
+  <h2>Odonus harmony &amp; scale <span class="tag rig">rig</span></h2>
+  <p class="lede">Patterns the rig samples each step to quantise the grid.</p>
+<pre class="copy">odonus $ harmony "&lt;c'maj7 a'min7&gt;/2" # mutate notes 20</pre>
+<pre class="copy">odonus $ scale "&lt;dorian mixolydian&gt;/4" # root d</pre>
+  <table>
+    <tr><td><code>harmony "PATTERN"</code></td><td class="gloss">snap to these notes, read as <code>note</code> reads them</td></tr>
+    <tr><td><code>harmony off</code></td><td class="gloss">back to the scale</td></tr>
+    <tr><td><code>scale "PATTERN"</code></td><td class="gloss">a pattern of scale names (list below)</td></tr>
+    <tr><td><code>scale off</code></td><td class="gloss">back to the scale set by hand</td></tr>
+    <tr><td><code>root d</code> · <code>root fs</code> · <code>root 2</code></td><td class="gloss">the root, apart from the scale, as in Tidal (C = 0)</td></tr>
+  </table>
+  <p class="dim" style="margin:8px 0 0">Heard only with Odonus on Rig: the rig does the sampling.</p>
+</section>
+
+<section>
+  <h2>Review cues <span class="tag rig">rig</span></h2>
+  <p class="lede">Time markers on a machine's Review surface, and loops of them.</p>
+<pre class="copy">vetula $ mark</pre>
+<pre class="copy">odonus $ loop 2</pre>
+  <table>
+    <tr><td><code>odonus|vetula $ mark</code></td><td class="gloss">drop a mark now</td></tr>
+    <tr><td><code>… $ loop N</code></td><td class="gloss">loop mark N (counting from 1)</td></tr>
+    <tr><td><code>… $ loop</code></td><td class="gloss">loop the latest mark</td></tr>
+    <tr><td><code>… $ loop off</code></td><td class="gloss">stop looping</td></tr>
+  </table>
+</section>
+
+<section class="wide">
+  <h2>Vetula cards <span class="tag rig">rig</span></h2>
+  <p class="lede">A card is one line on the stage. Evaluating <code>v3 $ …</code> rewrites card 3 in Vetula; <code>vetula $ ch…</code> makes a new one. Vetula's λ button sends a card here. Note names are Tidal's: <code>c5</code> = 60.</p>
+<pre class="copy">v3 $ ch3 "&lt;[c4,e4,g4] [a3,c4,e4] [d4,f4,a4] [g3,b3,d4]&gt;" "0 1 2 3"
+  # voice drop2
+  # arpup 4 # every 4
+  # strum 14</pre>
+  <div class="grid" style="gap:0 28px">
+  <div>
+  <h3>The line</h3>
+  <table>
+    <tr><td><code>chN</code></td><td class="gloss">MIDI channel, and the card's voice</td></tr>
+    <tr><td><code>"&lt;[c4,e4,g4] …&gt;"</code></td><td class="gloss">the chords</td></tr>
+    <tr><td><code>"0 1 2 3"</code></td><td class="gloss">mini-notation over chord indices: one cycle a bar. Leave it out for one chord per beat.</td></tr>
+  </table>
+  <h3>Layers <span class="dim" style="text-transform:none">· applied in order</span></h3>
+  <table>
+    <tr><td><code>transpose N</code> · <code>octave N</code></td><td class="gloss">semitones · octaves; a pattern works too: <code>"&lt;0 5&gt;"</code></td></tr>
+    <tr><td><code>slow N</code> · <code>fast N</code></td><td class="gloss">stretch or squeeze</td></tr>
+    <tr><td><code>voice SHAPE</code></td><td class="gloss"><code>open rootless drop2 drop24 quartal cluster</code></td></tr>
+    <tr><td><code>top N</code> · <code>bottom N</code></td><td class="gloss">keep the highest or lowest N notes</td></tr>
+    <tr><td><code>arpup|arpdown|arpupdown N</code></td><td class="gloss">arpeggiate, N notes per chord</td></tr>
+    <tr><td><code>arp "0 2 1 3"</code></td><td class="gloss">pick notes by index, low to high, wrapping by octaves</td></tr>
+    <tr><td><code>strum MS</code></td><td class="gloss">stagger a chord's notes (0..80 ms)</td></tr>
+  </table>
+  </div>
+  <div>
+  <h3>When <span class="dim" style="text-transform:none">· binds to the layer before it</span></h3>
+  <table>
+    <tr><td><code>every N</code></td><td class="gloss">only every Nth cycle</td></tr>
+    <tr><td><code>prob P</code></td><td class="gloss">with probability P per cycle</td></tr>
+    <tr><td><code>afterbar N</code></td><td class="gloss">from bar N on</td></tr>
+    <tr><td><code>whenmod A B</code></td><td class="gloss">when cycle mod A ≥ B</td></tr>
+  </table>
+  <h3>Where it goes</h3>
+  <table>
+    <tr><td><code>out midi</code> <span class="dim">(default)</span> · <code>out rig</code></td><td class="gloss">sound, played by the rig on the card's channel</td></tr>
+    <tr><td><code>out odo</code></td><td class="gloss">no sound: conducts Odonus's harmony</td></tr>
+    <tr><td><code>mute</code></td><td class="gloss">silent, kept</td></tr>
+  </table>
+  <p class="dim" style="margin:8px 0 0">The matrix router will take over <code>out</code>: see <code>kb/plans/matrix-router.md</code>.</p>
+  </div>
+  </div>
+</section>
+
+<section class="wide">
+  <h2>Scales by name <span class="tag both">both</span></h2>
+  <p class="lede">Tidal's <code>scale</code>, held to Haskell Tidal by the oracle. The same names serve <code>odonus $ scale "…"</code>.</p>
+<pre class="copy">d1 $ n (scale "&lt;dorian mixolydian&gt;" "0 .. 7" + "c") # s "superpiano"</pre>
+  <div class="names">minPent majPent ritusen egyptian kumai hirajoshi iwato chinese indian pelog prometheus scriabin gong shang jiao zhi yu whole wholetone augmented augmented2 hexMajor7 hexDorian hexPhrygian hexSus hexMajor6 hexAeolian major ionian dorian phrygian lydian mixolydian aeolian minor locrian harmonicMinor harmonicMajor melodicMinor melodicMinorDesc melodicMajor bartok hindu todi purvi marva bhairav ahirbhairav superLocrian romanianMinor hungarianMinor neapolitanMinor enigmatic spanish leadingWhole lydianMinor neapolitanMajor locrianMajor diminished octatonic diminished2 octatonic2 messiaen1 messiaen2 messiaen3 messiaen4 messiaen5 messiaen6 messiaen7 chromatic bayati hijaz sikah rast saba iraq</div>
+</section>
+
+</div>
+</main>
+<div class="toast" id="toast">copied</div>
+<script>
+const toast = document.getElementById("toast");
+document.querySelectorAll(".copy").forEach(el => el.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(el.textContent);
+    toast.classList.add("on");
+    setTimeout(() => toast.classList.remove("on"), 900);
+  } catch (_) { /* clipboard refused: nothing to do */ }
+}));
+</script>
+</body>
+</html>

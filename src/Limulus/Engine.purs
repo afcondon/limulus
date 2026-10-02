@@ -83,9 +83,10 @@ purerlUrl = "ws://localhost:3012/ws"
 -- | rather than to Tidal, or a cue for one (`vetula $ mark`, `odonus $ loop 2`:
 -- | its Review surface). Only purerl-tidal has the machines, so such a block
 -- | goes there whichever engine is selected; it is not Tidal, so it is no part
--- | of the comparison either.
+-- | of the comparison either. `drums $ s "bd*2 sn"` is Tidal, but played on the
+-- | drum kit through the rig's drum routing, which GHCi has no way to reach.
 machineLine :: String -> Boolean
-machineLine block = firstWord `elem` [ "odonus", "vetula" ]
+machineLine block = firstWord `elem` [ "odonus", "vetula", "drums" ]
   where
   firstWord = fromMaybe "" (head (split (Pattern " ") (trim block)))
 

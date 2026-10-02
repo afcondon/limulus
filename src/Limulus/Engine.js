@@ -1,10 +1,10 @@
 const post = (path, text) =>
   fetch(path, { method: "POST", body: text }).then((r) => r.json());
 
-export const _ghciEval = (text) => () => post("/api/ghci/eval", text);
-export const _ghciRestart = () => post("/api/ghci/restart", "");
+export const _ghciEval = (text) => () => post("api/ghci/eval", text);
+export const _ghciRestart = () => post("api/ghci/restart", "");
 export const _ghciStatus = () =>
-  fetch("/api/ghci/status").then((r) => r.json()).then((s) => s.state, () => "unreachable");
+  fetch("api/ghci/status").then((r) => r.json()).then((s) => s.state, () => "unreachable");
 
 // purerl-tidal's WebSocket. Text frames only; a frame sent before the
 // handshake is dropped, which the page shows as the socket being down.

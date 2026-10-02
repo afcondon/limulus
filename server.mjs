@@ -95,6 +95,11 @@ const json = (res, value) => {
 
 createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
+  // Served on its own port and, through :3023's proxy, at /limulus/ on the
+  // Atlantis origin, where the tab bus reaches it; the page asks by relative
+  // path, so both work.
+  if (url.pathname === "/limulus") { res.writeHead(301, { Location: "/limulus/" }); res.end(); return; }
+  url.pathname = url.pathname.replace(/^\/limulus(?=\/)/, "");
   if (req.method === "POST" && url.pathname === "/api/ghci/eval") {
     return json(res, await evaluate(await body(req)));
   }

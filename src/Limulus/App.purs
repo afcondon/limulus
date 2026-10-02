@@ -54,6 +54,11 @@ type State =
   -- The stage objects Limulus edits (Vetula's cards, Conspicillum's cloud),
   -- as the stage holds them.
   , objects :: Map Stage.Obj String
+  -- The Atlantis tab bus, on which Limulus announces itself to the dashboard
+  -- as the machines' pages do; `sounding` is whether anything it started may
+  -- still be playing (from the first block sent to the last hush).
+  , bus :: Maybe Bus.Bus
+  , sounding :: Boolean
   }
 
 data Action
@@ -75,7 +80,8 @@ component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
   { initialState: \_ ->
       { engine: Ghci, ghci: Off, socket: Nothing, purerlUp: false, log: []
-      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty }
+      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty
+      , bus: Nothing, sounding: false }
   , render
   , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Init }
   }
@@ -173,6 +179,9 @@ handleAction = case _ of
       HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
     liftEffect $ Bus.onMessage bus (HS.notify listener <<< FromBus)
+    liftEffect $ Bus.sayGoodbye bus [ "limulus" ]
+    H.modify_ _ { bus = Just bus }
+    announce
     handleAction Connect
     void $ H.fork $ H.liftAff $ forever do
       liftEffect (HS.notify listener PollGhci)
@@ -183,6 +192,9 @@ handleAction = case _ of
   Eval b | Just sl <- Stage.stageLine b.text -> evalObj b sl
 
   Eval { text: block } -> do
+    unlessM (H.gets _.sounding) do
+      H.modify_ _ { sounding = true }
+      announce
     st <- H.get
     let
       id = st.nextId
@@ -198,7 +210,8 @@ handleAction = case _ of
     void $ H.fork $ void $ H.liftAff (Engine.ghciEval "hush")
     st <- H.get
     for_ st.socket \ws -> liftEffect (Engine.send ws (Engine.purerlBlock "hush"))
-    H.modify_ \s -> s { pending = [] }
+    H.modify_ \s -> s { pending = [], sounding = false }
+    announce
 
   SetEngine e -> H.modify_ _ { engine = e }
 
@@ -209,6 +222,8 @@ handleAction = case _ of
   PollGhci -> do
     g <- H.liftAff Engine.ghciStatus
     H.modify_ _ { ghci = g }
+    -- the dashboard counts a tab that stops announcing as closed
+    announce
 
   Connect -> do
     st <- H.get
@@ -249,6 +264,7 @@ handleAction = case _ of
 
   FromBus msg -> case msg of
     Bus.Panic -> handleAction Hush
+    Bus.Hello -> announce
     _ -> pure unit
 
 sendPurerl :: forall o. Int -> String -> M o Unit
@@ -322,6 +338,13 @@ stageFrame = case _ of
   Stage.Rejected obj reason -> do
     H.modify_ \s -> s { objects = Map.delete obj s.objects }
     note obj (reason <> "; your block is kept as typed") false
+
+-- | Tell the dashboard Limulus is open, and whether it may be sounding.
+announce :: forall o. M o Unit
+announce = do
+  st <- H.get
+  for_ st.bus \bus -> liftEffect $ Bus.post bus $
+    Bus.State { machine: "limulus", alias: Nothing, edited: false, playing: st.sounding }
 
 -- | A line in the log about an object, answering no block.
 note :: forall o. Stage.Obj -> String -> Boolean -> M o Unit

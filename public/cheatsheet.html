@@ -7,7 +7,7 @@
 <!-- Prototype (2026-10-02): everything the rig adds to plain Tidal, in one
      page. Meant to become a panel in Limulus itself; the grammar it describes
      lives in reef (Reef.Move, Reef.Vetula.Lepidoptera, Reef.Balistes.Kit) and
-     purerl-tidal (Tidal.DrumVoice, the line handler). -->
+     Architeuthis (Tidal.DrumVoice, the line handler). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
@@ -77,7 +77,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
 
 <div class="legend">
   <span><span class="tag both">both</span> runs on either engine, the same</span>
-  <span><span class="tag rig">rig</span> goes to purerl-tidal whichever engine is selected</span>
+  <span><span class="tag rig">rig</span> goes to Architeuthis whichever engine is selected</span>
 </div>
 
 <div class="grid">
@@ -86,7 +86,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
   <h2>Where a block goes</h2>
   <p class="lede">The first word decides.</p>
   <table>
-    <tr><td><code>d1 $ … </code> · <code>hush</code> · <code>setcps</code></td><td class="gloss">plain Tidal, to the selected engine (GHCi or purerl-tidal) <span class="tag both">both</span></td></tr>
+    <tr><td><code>d1 $ … </code> · <code>hush</code> · <code>setcps</code></td><td class="gloss">plain Tidal, to the selected engine (GHCi or Architeuthis) <span class="tag both">both</span></td></tr>
     <tr><td><code>drums $ …</code></td><td class="gloss">Tidal, played on the drum kit <span class="tag rig">rig</span></td></tr>
     <tr><td><code>odonus $ …</code></td><td class="gloss">a move for Odonus, or a Review cue <span class="tag rig">rig</span></td></tr>
     <tr><td><code>v3 $ …</code> · <code>vetula $ ch…</code></td><td class="gloss">a Vetula card, written to the stage <span class="tag rig">rig</span></td></tr>
@@ -107,7 +107,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
   <p class="lede">Real Tidal, on the same clock as <code>d1</code>. Each event hits a lane of the drum kit and goes through the drum routing table: Ableton, FH-2 gates, Rample, sample voices.</p>
 <pre class="copy">drums $ s "bd*2 [~ sn] &lt;hh*4 hh*8&gt;" # gain "1 0.7"</pre>
 <pre class="copy">drums $ fast "&lt;1 2&gt;" $ s "bd ~ [~ bd] ~, ~ cp, hh*8?" # velocity "0.6 0.9"</pre>
-  <p class="dim" style="margin:0 0 10px;font-size:16px">purerl-tidal's Tidal, a subset that is growing: <code>every</code> is not in it yet.</p>
+  <p class="dim" style="margin:0 0 10px;font-size:16px">Architeuthis's Tidal, a subset that is growing: <code>every</code> is not in it yet.</p>
   <table>
     <tr><td><code>s "bd"</code></td><td class="gloss">the lane, by name (see below). Unknown names play nothing.</td></tr>
     <tr><td><code>n "36 42"</code></td><td class="gloss">with no <code>s</code>: the MIDI note itself</td></tr>

@@ -245,7 +245,7 @@ handleAction = case _ of
   -- Unanswered blocks will not be answered now; try again in a while.
   PurerlDown -> do
     st <- H.get
-    for_ st.pending \id -> handleAction (Answered id { ok: false, out: "purerl-tidal went away" })
+    for_ st.pending \id -> handleAction (Answered id { ok: false, out: "Architeuthis went away" })
     H.modify_ _ { purerlUp = false, socket = Nothing, pending = [] }
     void $ H.fork do
       H.liftAff (delay (Milliseconds 3000.0))
@@ -278,7 +278,7 @@ sendLine id line = do
     Just ws -> liftEffect (Engine.send ws line)
     Nothing -> pure false
   if sent then H.modify_ \s -> s { pending = snoc s.pending id }
-  else handleAction (Answered id { ok: false, out: "purerl-tidal is not connected (ws :3012)" })
+  else handleAction (Answered id { ok: false, out: "Architeuthis (the rig) is not connected (ws :3012)" })
 
 -- | Evaluate a stage block: write the object to the stage. A `vetula $` block
 -- | becomes a new card, numbered here, and its head is rewritten to say so.

@@ -40,7 +40,7 @@ derive instance Eq Engine
 engineName :: Engine -> String
 engineName = case _ of
   Ghci -> "Tidal 1.10 · GHCi"
-  Purerl -> "purerl-tidal"
+  Purerl -> "Architeuthis"
 
 -- | What an engine said about one block, and whether it took it.
 type Reply = { ok :: Boolean, out :: String }

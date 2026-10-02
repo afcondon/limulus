@@ -12,6 +12,12 @@ package:
     - effect
     - either
     - foldable-traversable
+    - foreign-object
+    - integers
+    - nullable
+    - ordered-collections
+    - simple-json
+    - tuples
     - halogen
     - halogen-subscriptions
     - js-timers

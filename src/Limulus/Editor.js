@@ -71,7 +71,7 @@ export const _create = (parent, initial, handlers) => {
     if (!range) return true;
     view.dispatch({ effects: flash.of(range) });
     setTimeout(() => view.dispatch({ effects: flash.of(null) }), 220);
-    handlers.onEval(view.state.sliceDoc(range.from, range.to))();
+    handlers.onEval({ text: view.state.sliceDoc(range.from, range.to), from: range.from, to: range.to })();
     return true;
   };
   const hush = () => { handlers.onHush(); return true; };
@@ -105,3 +105,39 @@ export const _create = (parent, initial, handlers) => {
 };
 
 export const _focus = (view) => view.focus();
+
+// The block (run of non-blank lines) whose first line starts with `head`
+// followed by `$` (`v3 $ …`), as {from, to, text}, or null.
+export const _findBlock = (view, head) => {
+  const doc = view.state.doc;
+  const re = new RegExp("^\\s*" + head.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\$");
+  for (let n = 1; n <= doc.lines; n++) {
+    const line = doc.line(n);
+    const prevBlank = n === 1 || doc.line(n - 1).text.trim() === "";
+    if (prevBlank && re.test(line.text)) {
+      let last = n;
+      while (last < doc.lines && doc.line(last + 1).text.trim() !== "") last++;
+      const to = doc.line(last).to;
+      return { from: line.from, to, text: view.state.sliceDoc(line.from, to) };
+    }
+  }
+  return null;
+};
+
+export const _replace = (view, from, to, text) => {
+  view.dispatch({ changes: { from, to, insert: text } });
+};
+
+// Add a block at the end of the buffer, after a blank line, and show it.
+export const _append = (view, text) => {
+  const doc = view.state.doc;
+  const tail = doc.toString().endsWith("\n\n") ? "" : doc.toString().endsWith("\n") ? "\n" : "\n\n";
+  const from = doc.length + tail.length;
+  view.dispatch({ changes: { from: doc.length, insert: tail + text + "\n" } });
+  _reveal(view, from, from + text.length);
+};
+
+// Select a range and scroll it into view.
+export const _reveal = (view, from, to) => {
+  view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true });
+};

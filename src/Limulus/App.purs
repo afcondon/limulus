@@ -3,15 +3,22 @@
 -- | The same buffer can be sent to Haskell Tidal or to purerl-tidal; that is
 -- | the point of the page. Hush silences both, since a flipped buffer can
 -- | leave the other engine playing, and so does Panic from any Atlantis page.
+-- |
+-- | Vetula's cards are lines here too (`v3 $ …`, `Limulus.Stage`): the page
+-- | subscribes to the rig's stage, writes a card when its block is evaluated,
+-- | and keeps a card's block in step when the card changes in Vetula.
 module Limulus.App (component) where
 
 import Prelude
 
 import Control.Monad.Rec.Class (forever)
-import Data.Array (cons, snoc, take, uncons)
+import Data.Array (cons, elem, filterA, range, snoc, take, uncons)
 import Data.Foldable (for_, traverse_)
+import Data.Map (Map)
+import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust, maybe)
-import Data.String (Pattern(..), stripPrefix)
+import Data.String (Pattern(..), indexOf, stripPrefix)
+import Limulus.Stage as Stage
 import Effect.Aff (Aff, Milliseconds(..), delay)
 import Effect.Class (liftEffect)
 import Halogen as H
@@ -43,11 +50,14 @@ type State =
   -- answers every frame, in order.
   , pending :: Array Int
   , listener :: Maybe (HS.Listener Action)
+  , editor :: Maybe Editor.Editor
+  -- Vetula's cards as the stage holds them (card number → its line).
+  , cards :: Map Int String
   }
 
 data Action
   = Init
-  | Eval String
+  | Eval Editor.Block
   | Hush
   | SetEngine Engine
   | RestartGhci
@@ -58,12 +68,13 @@ data Action
   | PurerlSaid String
   | Answered Int Reply
   | FromBus Bus.Msg
+  | SetEditor Editor.Editor
 
 component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
   { initialState: \_ ->
       { engine: Ghci, ghci: Off, socket: Nothing, purerlUp: false, log: []
-      , nextId: 0, pending: [], listener: Nothing }
+      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, cards: Map.empty }
   , render
   , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Init }
   }
@@ -153,6 +164,7 @@ handleAction = case _ of
       ed <- Editor.create (HTMLElement.toElement el) starter
         { onEval: HS.notify listener <<< Eval, onHush: HS.notify listener Hush }
       Editor.focus ed
+      HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
     liftEffect $ Bus.onMessage bus (HS.notify listener <<< FromBus)
     handleAction Connect
@@ -160,7 +172,11 @@ handleAction = case _ of
       liftEffect (HS.notify listener PollGhci)
       delay (Milliseconds 1500.0)
 
-  Eval block -> do
+  SetEditor ed -> H.modify_ _ { editor = Just ed }
+
+  Eval b | Just card <- Stage.cardLine b.text -> evalCard b card
+
+  Eval { text: block } -> do
     st <- H.get
     let
       id = st.nextId
@@ -198,7 +214,12 @@ handleAction = case _ of
         }
       H.modify_ _ { socket = Just ws }
 
-  PurerlUp -> H.modify_ _ { purerlUp = true }
+  -- Subscribe to the stage's text objects: its answer and later writes arrive
+  -- as stage frames, not as replies.
+  PurerlUp -> do
+    H.modify_ _ { purerlUp = true }
+    st <- H.get
+    for_ st.socket \ws -> liftEffect (Engine.send ws "stage-text-subscribe")
 
   -- Unanswered blocks will not be answered now; try again in a while.
   PurerlDown -> do
@@ -208,6 +229,8 @@ handleAction = case _ of
     void $ H.fork do
       H.liftAff (delay (Milliseconds 3000.0))
       handleAction Connect
+
+  PurerlSaid text | Stage.isStageFrame text -> for_ (Stage.readFrame text) stageFrame
 
   PurerlSaid text -> do
     st <- H.get
@@ -223,13 +246,83 @@ handleAction = case _ of
     _ -> pure unit
 
 sendPurerl :: forall o. Int -> String -> M o Unit
-sendPurerl id block = do
+sendPurerl id block = sendLine id (Engine.purerlBlock block)
+
+-- | Send one frame for log entry `id`, whose reply answers it.
+sendLine :: forall o. Int -> String -> M o Unit
+sendLine id line = do
   st <- H.get
   sent <- case st.socket of
-    Just ws -> liftEffect (Engine.send ws (Engine.purerlBlock block))
+    Just ws -> liftEffect (Engine.send ws line)
     Nothing -> pure false
   if sent then H.modify_ \s -> s { pending = snoc s.pending id }
   else handleAction (Answered id { ok: false, out: "purerl-tidal is not connected (ws :3012)" })
+
+-- | Evaluate a card block: write the card to the stage. A `vetula $` block
+-- | becomes a new card, numbered here, and its head is rewritten to say so.
+evalCard :: forall o. Editor.Block -> Stage.CardLine -> M o Unit
+evalCard b card = do
+  st <- H.get
+  n <- case card.card of
+    Just n -> pure n
+    Nothing -> do
+      taken <- case st.editor of
+        Just ed -> liftEffect $ filterA (\k -> isJust <$> Editor.findBlock ed ("v" <> show k))
+                     (range 1 (Map.size st.cards + 2))
+        Nothing -> pure []
+      let n = Stage.freeCard st.cards (\k -> elem k taken)
+      for_ st.editor \ed -> for_ (indexOf (Pattern "$") b.text) \at ->
+        liftEffect $ Editor.replace ed b.from (b.from + at) ("v" <> show n <> " ")
+      pure n
+  let id = st.nextId
+  H.modify_ \s -> s
+    { nextId = id + 1
+    , log = take 60 (cons { id, engine: Purerl, block: "v" <> show n <> " $ " <> card.body, reply: Nothing } s.log)
+    , cards = Map.insert n card.body s.cards
+    }
+  sendLine id ("stage-text " <> Stage.cardKey n <> " " <> card.body)
+
+-- | A stage frame about a card. A card written elsewhere replaces its block
+-- | only if the block still says what the stage last said, so an edit in hand
+-- | is never overwritten; it is noted instead, and evaluating it wins.
+stageFrame :: forall o. Stage.StageFrame -> M o Unit
+stageFrame = case _ of
+  Stage.Table cards -> H.modify_ _ { cards = cards }
+  Stage.Written n text -> do
+    st <- H.get
+    let prev = Map.lookup n st.cards
+    H.modify_ _ { cards = maybe (Map.delete n st.cards) (\t -> Map.insert n t st.cards) text }
+    for_ st.editor \ed -> do
+      mblock <- liftEffect (Editor.findBlock ed ("v" <> show n))
+      for_ mblock \blk -> case text of
+        Nothing -> note n "removed in Vetula; this block no longer names a card" false
+        Just t
+          | Stage.bodyOf blk.text == t -> pure unit
+          | Just (Stage.bodyOf blk.text) == prev -> liftEffect (Editor.replace ed blk.from blk.to ("v" <> show n <> " $ " <> t))
+          -- what the block was last in step with is unknown (it was refused):
+          -- keep the typing, to be fixed and evaluated again
+          | prev == Nothing -> pure unit
+          | otherwise -> note n "changed in Vetula; this block differs, so it was left alone (evaluate it to make yours the card)" false
+  Stage.Open n -> do
+    st <- H.get
+    for_ st.editor \ed -> do
+      mblock <- liftEffect (Editor.findBlock ed ("v" <> show n))
+      case mblock, Map.lookup n st.cards of
+        Just blk, _ -> liftEffect (Editor.reveal ed blk.from blk.to)
+        Nothing, Just t -> liftEffect (Editor.append ed ("v" <> show n <> " $ " <> t))
+        Nothing, Nothing -> note n "Vetula asked to show it, but the stage has no such card" false
+  -- A refused block is left as typed: forget what the stage said for it, so
+  -- the card's real line, republished by Vetula, does not overwrite it.
+  Stage.Rejected n reason -> do
+    H.modify_ \s -> s { cards = Map.delete n s.cards }
+    note n (reason <> "; your block is kept as typed") false
+
+-- | A line in the log about card `n` that answers no block.
+note :: forall o. Int -> String -> Boolean -> M o Unit
+note n out ok = H.modify_ \s -> s
+  { nextId = s.nextId + 1
+  , log = take 60 (cons { id: s.nextId, engine: Purerl, block: "v" <> show n <> " · Vetula", reply: Just { ok, out } } s.log)
+  }
 
 -- | purerl-tidal's refusals start ERR or ERROR.
 isErr :: String -> Boolean

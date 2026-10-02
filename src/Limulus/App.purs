@@ -51,8 +51,9 @@ type State =
   , pending :: Array Int
   , listener :: Maybe (HS.Listener Action)
   , editor :: Maybe Editor.Editor
-  -- Vetula's cards as the stage holds them (card number → its line).
-  , cards :: Map Int String
+  -- The stage objects Limulus edits (Vetula's cards, Conspicillum's cloud),
+  -- as the stage holds them.
+  , objects :: Map Stage.Obj String
   }
 
 data Action
@@ -74,7 +75,7 @@ component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
   { initialState: \_ ->
       { engine: Ghci, ghci: Off, socket: Nothing, purerlUp: false, log: []
-      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, cards: Map.empty }
+      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty }
   , render
   , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Init }
   }
@@ -179,7 +180,7 @@ handleAction = case _ of
 
   SetEditor ed -> H.modify_ _ { editor = Just ed }
 
-  Eval b | Just card <- Stage.cardLine b.text -> evalCard b card
+  Eval b | Just sl <- Stage.stageLine b.text -> evalObj b sl
 
   Eval { text: block } -> do
     st <- H.get
@@ -263,70 +264,70 @@ sendLine id line = do
   if sent then H.modify_ \s -> s { pending = snoc s.pending id }
   else handleAction (Answered id { ok: false, out: "purerl-tidal is not connected (ws :3012)" })
 
--- | Evaluate a card block: write the card to the stage. A `vetula $` block
+-- | Evaluate a stage block: write the object to the stage. A `vetula $` block
 -- | becomes a new card, numbered here, and its head is rewritten to say so.
-evalCard :: forall o. Editor.Block -> Stage.CardLine -> M o Unit
-evalCard b card = do
+evalObj :: forall o. Editor.Block -> Stage.StageLine -> M o Unit
+evalObj b sl = do
   st <- H.get
-  n <- case card.card of
-    Just n -> pure n
+  obj <- case sl.obj of
+    Just obj -> pure obj
     Nothing -> do
       taken <- case st.editor of
         Just ed -> liftEffect $ filterA (\k -> isJust <$> Editor.findBlock ed ("v" <> show k))
-                     (range 1 (Map.size st.cards + 2))
+                     (range 1 (Map.size st.objects + 2))
         Nothing -> pure []
-      let n = Stage.freeCard st.cards (\k -> elem k taken)
+      let obj = Stage.Card (Stage.freeCard st.objects (\k -> elem k taken))
       for_ st.editor \ed -> for_ (indexOf (Pattern "$") b.text) \at ->
-        liftEffect $ Editor.replace ed b.from (b.from + at) ("v" <> show n <> " ")
-      pure n
+        liftEffect $ Editor.replace ed b.from (b.from + at) (Stage.headOf obj <> " ")
+      pure obj
   let id = st.nextId
   H.modify_ \s -> s
     { nextId = id + 1
-    , log = take 60 (cons { id, engine: Purerl, block: "v" <> show n <> " $ " <> card.body, reply: Nothing } s.log)
-    , cards = Map.insert n card.body s.cards
+    , log = take 60 (cons { id, engine: Purerl, block: Stage.headOf obj <> " $ " <> sl.body, reply: Nothing } s.log)
+    , objects = Map.insert obj sl.body s.objects
     }
-  sendLine id ("stage-text " <> Stage.cardKey n <> " " <> card.body)
+  sendLine id ("stage-text " <> Stage.objKey obj <> " " <> sl.body)
 
--- | A stage frame about a card. A card written elsewhere replaces its block
+-- | A stage frame about an object. One written elsewhere replaces its block
 -- | only if the block still says what the stage last said, so an edit in hand
 -- | is never overwritten; it is noted instead, and evaluating it wins.
 stageFrame :: forall o. Stage.StageFrame -> M o Unit
 stageFrame = case _ of
-  Stage.Table cards -> H.modify_ _ { cards = cards }
-  Stage.Written n text -> do
+  Stage.Table objects -> H.modify_ _ { objects = objects }
+  Stage.Written obj text -> do
     st <- H.get
-    let prev = Map.lookup n st.cards
-    H.modify_ _ { cards = maybe (Map.delete n st.cards) (\t -> Map.insert n t st.cards) text }
+    let prev = Map.lookup obj st.objects
+    H.modify_ _ { objects = maybe (Map.delete obj st.objects) (\t -> Map.insert obj t st.objects) text }
     for_ st.editor \ed -> do
-      mblock <- liftEffect (Editor.findBlock ed ("v" <> show n))
+      mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
       for_ mblock \blk -> case text of
-        Nothing -> note n "removed in Vetula; this block no longer names a card" false
+        Nothing -> note obj ("removed in " <> Stage.ownerOf obj <> "; this block no longer names anything") false
         Just t
           | Stage.bodyOf blk.text == t -> pure unit
-          | Just (Stage.bodyOf blk.text) == prev -> liftEffect (Editor.replace ed blk.from blk.to (Stage.cardBlock n t))
+          | Just (Stage.bodyOf blk.text) == prev -> liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
           -- what the block was last in step with is unknown (it was refused):
           -- keep the typing, to be fixed and evaluated again
           | prev == Nothing -> pure unit
-          | otherwise -> note n "changed in Vetula; this block differs, so it was left alone (evaluate it to make yours the card)" false
-  Stage.Open n -> do
+          | otherwise -> note obj ("changed in " <> Stage.ownerOf obj <> "; this block differs, so it was left alone (evaluate it to make yours the one)") false
+  Stage.Open obj -> do
     st <- H.get
     for_ st.editor \ed -> do
-      mblock <- liftEffect (Editor.findBlock ed ("v" <> show n))
-      case mblock, Map.lookup n st.cards of
+      mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
+      case mblock, Map.lookup obj st.objects of
         Just blk, _ -> liftEffect (Editor.reveal ed blk.from blk.to)
-        Nothing, Just t -> liftEffect (Editor.append ed (Stage.cardBlock n t))
-        Nothing, Nothing -> note n "Vetula asked to show it, but the stage has no such card" false
+        Nothing, Just t -> liftEffect (Editor.append ed (Stage.blockOf obj t))
+        Nothing, Nothing -> note obj (Stage.ownerOf obj <> " asked to show it, but the stage does not have it") false
   -- A refused block is left as typed: forget what the stage said for it, so
-  -- the card's real line, republished by Vetula, does not overwrite it.
-  Stage.Rejected n reason -> do
-    H.modify_ \s -> s { cards = Map.delete n s.cards }
-    note n (reason <> "; your block is kept as typed") false
+  -- the real line, republished by its page, does not overwrite it.
+  Stage.Rejected obj reason -> do
+    H.modify_ \s -> s { objects = Map.delete obj s.objects }
+    note obj (reason <> "; your block is kept as typed") false
 
--- | A line in the log about card `n` that answers no block.
-note :: forall o. Int -> String -> Boolean -> M o Unit
-note n out ok = H.modify_ \s -> s
+-- | A line in the log about an object, answering no block.
+note :: forall o. Stage.Obj -> String -> Boolean -> M o Unit
+note obj out ok = H.modify_ \s -> s
   { nextId = s.nextId + 1
-  , log = take 60 (cons { id: s.nextId, engine: Purerl, block: "v" <> show n <> " · Vetula", reply: Just { ok, out } } s.log)
+  , log = take 60 (cons { id: s.nextId, engine: Purerl, block: Stage.headOf obj <> " · " <> Stage.ownerOf obj, reply: Just { ok, out } } s.log)
   }
 
 -- | purerl-tidal's refusals start ERR or ERROR.

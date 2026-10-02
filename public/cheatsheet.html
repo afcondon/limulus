@@ -90,6 +90,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>drums $ …</code></td><td class="gloss">Tidal, played on the drum kit <span class="tag rig">rig</span></td></tr>
     <tr><td><code>odonus $ …</code></td><td class="gloss">a move for Odonus, or a Review cue <span class="tag rig">rig</span></td></tr>
     <tr><td><code>v3 $ …</code> · <code>vetula $ ch…</code></td><td class="gloss">a Vetula card, written to the stage <span class="tag rig">rig</span></td></tr>
+    <tr><td><code>conspicillum $ …</code></td><td class="gloss">Conspicillum's line, written to the stage <span class="tag rig">rig</span></td></tr>
     <tr><td><code>vetula $ mark</code> …</td><td class="gloss">a Review cue for Vetula <span class="tag rig">rig</span></td></tr>
   </table>
   <h3>hush</h3>
@@ -210,6 +211,35 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>mute</code></td><td class="gloss">silent, kept</td></tr>
   </table>
   <p class="dim" style="margin:8px 0 0">The matrix router will take over <code>out</code>: see <code>kb/plans/matrix-router.md</code>.</p>
+  </div>
+  </div>
+</section>
+
+<section class="wide">
+  <h2>Conspicillum <span class="tag rig">rig</span></h2>
+  <p class="lede">The granular cloud's scene as one line. Evaluating it plays it on the Conspicillum page, as if typed in its own line box, so the page must be open. Its <b>→ Limulus</b> button brings the line here. Terms are separated by <code>#</code>; anything not said is the default, sixteen grains a bar following the tape.</p>
+<pre class="copy">conspicillum $ s "fd-beat-bar" # walk 0.2 0.1 0.1 # grid 8 # swing 0.62
+  # fix snare 0.5 (pshift 1.5) # every 4 0 (speed -1)</pre>
+  <div class="grid" style="gap:0 28px">
+  <div>
+  <table>
+    <tr><td><code>s "set"</code> · <code>s "set:4"</code></td><td class="gloss">the Quadrat set, and one sample of it (else the whole set)</td></tr>
+    <tr><td><code>grains 16</code> · <code>euclid 5 8</code> · <code>onsets "0 0.375"</code></td><td class="gloss">where grains land</td></tr>
+    <tr><td><code>sustain</code> · <code>position</code> · <code>spray</code> · <code>follow</code></td><td class="gloss">the cloud</td></tr>
+    <tr><td><code>walk JUMP HOLD HOME</code> · <code>grid N</code> · <code>reach N</code></td><td class="gloss">the read head's walk</td></tr>
+    <tr><td><code>swing</code> · <code>tapeswing</code> · <code>swinggrid N</code></td><td class="gloss">swing</td></tr>
+    <tr><td><code>bars N</code> · <code>order "0 1 1 0"</code> · <code>samples "&lt;4 7 5 0&gt;"</code> · <code>steps "~ ~ 5?0.4"</code></td><td class="gloss">structure over bars</td></tr>
+  </table>
+  </div>
+  <div>
+  <table>
+    <tr><td><code>warp repitch|gap|leak</code></td><td class="gloss">how the material meets the tempo</td></tr>
+    <tr><td><code>chords "&lt;Bm Bm(maj7) F#m&gt;"</code> · <code>fit 0.5 0.9</code> · <code>tune root|bass|tones</code></td><td class="gloss">a chord a cycle; how hard the cloud holds to it; resonators follow</td></tr>
+    <tr><td><code>speed</code> · <code>gain</code> · <code>pan</code> · <code>accelerate</code></td><td class="gloss">per grain</td></tr>
+    <tr><td><code>lpf 800</code> · <code>room 0.3</code> · <code>sendA 0.8</code> …</td><td class="gloss">any effect or chain setting by name</td></tr>
+    <tr><td><code>every 4 0 (op x)</code> · <code>sometimesBy 0.2 (op x)</code> · <code>always (op x)</code> · <code>fix snare 0.5 (op x)</code></td><td class="gloss">rules; <code>x</code> may be <code>"a b c"</code> (per firing) or <code>"&lt;a b c&gt;"</code> (per bar)</td></tr>
+    <tr><td><code>seed N</code></td><td class="gloss">the cloud's randomness</td></tr>
+  </table>
   </div>
   </div>
 </section>

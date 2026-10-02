@@ -28,10 +28,10 @@ const dark = EditorView.theme({
 // A line's head word, when it addresses the rig rather than Tidal (`drums $`,
 // `odonus $`, `vetula $`, a card `v3 $`), shown inverted: phosphor on black is
 // Tidal, black on phosphor is the rig's own language (Limulus.Engine's
-// machineLine and the card blocks). Inversion rather than a colour, since the
+// machineLine and the stage blocks). Inversion rather than a colour, since the
 // palette is already as green as it should be.
 const rigHead = new MatchDecorator({
-  regexp: /(?<=^\s*)(?:drums|odonus|vetula|v\d+)(?=\s*\$)/g,
+  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|v\d+)(?=\s*\$)/g,
   decoration: Decoration.mark({ class: "cm-rig-head" }),
 });
 const rigHeads = ViewPlugin.fromClass(class {

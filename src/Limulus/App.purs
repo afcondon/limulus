@@ -106,6 +106,11 @@ render st =
             [ engineButton st Ghci (ghciLamp st.ghci)
             , engineButton st Purerl (if st.purerlUp then "up" else "down")
             ]
+        , HH.a
+            [ HP.class_ (H.ClassName "cheats"), HP.href "cheatsheet.html", HP.target "limulus-cheatsheet"
+            , HP.title "What the rig adds to Tidal: drums, Odonus moves, Vetula cards, scales"
+            ]
+            [ HH.text "cheatsheet" ]
         , HH.button
             [ HP.class_ (H.ClassName "hush"), HE.onClick \_ -> Hush, HP.title "Silence both engines (Cmd-.)" ]
             [ HH.text "hush" ]

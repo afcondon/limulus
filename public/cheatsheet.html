@@ -174,11 +174,14 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>odonus|vetula $ mark</code></td><td class="gloss">drop a mark now: its window is that bar and the one before</td></tr>
     <tr><td><code>… $ loop N</code></td><td class="gloss">loop mark N; several loops can play at once</td></tr>
     <tr><td><code>… $ loop</code></td><td class="gloss">loop the latest mark</td></tr>
+    <tr><td><code>… $ loop "&lt;1 2&gt;"</code></td><td class="gloss">a pattern of marks, a cycle a bar: each from the top of its window when the pattern reaches it (one such loop a machine)</td></tr>
     <tr><td><code>… $ loop N hush</code></td><td class="gloss">stop loop N</td></tr>
     <tr><td><code>… $ loop hush</code></td><td class="gloss">stop every loop of the machine (<code>… $ hush</code> is the machine)</td></tr>
     <tr><td><code>… $ slide N</code> · <code>widen N</code> · <code>narrow N</code></td><td class="gloss">move the window, or its end, by bars</td></tr>
     <tr><td><code>… $ slide "PATTERN"</code> · <code>widen "PATTERN"</code></td><td class="gloss">follow a pattern of bars from the mark; <code>slide off</code> stops following</td></tr>
     <tr><td><code>… $ reset</code></td><td class="gloss">the window back at its mark, patterns dropped</td></tr>
+    <tr><td><code>… $ trim</code></td><td class="gloss">cut everything outside the marks' windows, a bar either side (the surface's ✂ cut takes a stretch you drag across)</td></tr>
+    <tr><td><code>… $ undo</code></td><td class="gloss">put back the last cut or trim</td></tr>
     <tr><td><code>… $ clear</code></td><td class="gloss">empty the machine's record buffer: notes, marks, loops (the Review surface's clear does the same)</td></tr>
   </table>
   <p class="dim" style="margin:8px 0 0">A window cue acts on the loop its line names (<code>loop 2 # widen 1</code>), else the loop started last, else the latest mark.</p>

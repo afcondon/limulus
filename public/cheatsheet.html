@@ -167,7 +167,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
 
 <section>
   <h2>Review cues <span class="tag rig">rig</span></h2>
-  <p class="lede">Marks in a machine's record buffer, and loops of them, played by the rig on Link time beside live play. Marks count from 1 in the order made; a loop starts on the next downbeat.</p>
+  <p class="lede">Marks in a machine's record buffer, and loops of them, played by the rig on Link time beside live play. Marks are numbered by position, oldest first, and close up after a delete or a clear; a loop starts on the next downbeat.</p>
 <pre class="copy">vetula $ mark</pre>
 <pre class="copy">odonus $ loop 2 # slide "&lt;0 -1 -2&gt;"</pre>
   <table>
@@ -179,6 +179,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>… $ slide N</code> · <code>widen N</code> · <code>narrow N</code></td><td class="gloss">move the window, or its end, by bars</td></tr>
     <tr><td><code>… $ slide "PATTERN"</code> · <code>widen "PATTERN"</code></td><td class="gloss">follow a pattern of bars from the mark; <code>slide off</code> stops following</td></tr>
     <tr><td><code>… $ reset</code></td><td class="gloss">the window back at its mark, patterns dropped</td></tr>
+    <tr><td><code>… $ clear</code></td><td class="gloss">empty the machine's record buffer: notes, marks, loops (the Review surface's clear does the same)</td></tr>
   </table>
   <p class="dim" style="margin:8px 0 0">A window cue acts on the loop its line names (<code>loop 2 # widen 1</code>), else the loop started last, else the latest mark.</p>
 </section>

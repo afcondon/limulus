@@ -325,6 +325,14 @@ stageFrame = case _ of
           -- keep the typing, to be fixed and evaluated again
           | prev == Nothing -> pure unit
           | otherwise -> note obj ("changed in " <> Stage.ownerOf obj <> "; this block differs, so it was left alone (evaluate it to make yours the one)") false
+  -- A page handed over a block (a mark, as code): add it at the end, shown.
+  Stage.Paste key text -> do
+    st <- H.get
+    for_ st.editor \ed -> liftEffect (Editor.append ed text)
+    H.modify_ \s -> s
+      { nextId = s.nextId + 1
+      , log = take 60 (cons { id: s.nextId, engine: Purerl, block: key, reply: Just { ok: true, out: "added to the end of the buffer" } } s.log)
+      }
   Stage.Open obj -> do
     st <- H.get
     for_ st.editor \ed -> do

@@ -110,10 +110,13 @@ data StageFrame
   | Written Obj (Maybe String)
   | Open Obj
   | Rejected Obj String
+  -- | A block of text a page hands over to add to the buffer (a mark, as
+  -- | code), and whose it is (`odonus/mark`).
+  | Paste String String
 
 isStageFrame :: String -> Boolean
 isStageFrame msg = any (\p -> isJust (stripPrefix (Pattern p) msg))
-  [ "stage-texts ", "stage-text ", "stage-open ", "stage-reject " ]
+  [ "stage-texts ", "stage-text ", "stage-open ", "stage-reject ", "stage-paste " ]
 
 -- | A stage frame about an object Limulus edits, or `Nothing` (another slot's object, or
 -- | not a stage frame at all).
@@ -131,6 +134,10 @@ readFrame msg =
   (stripPrefix (Pattern "stage-open ") msg >>= \json -> do
       w :: { key :: String } <- hush (readJSON json)
       Open <$> objOfKey w.key)
+  `orElse`
+  (stripPrefix (Pattern "stage-paste ") msg >>= \json -> do
+      w :: { key :: String, text :: String } <- hush (readJSON json)
+      pure (Paste w.key w.text))
   `orElse`
   (stripPrefix (Pattern "stage-reject ") msg >>= \json -> do
       w :: { key :: String, reason :: String } <- hush (readJSON json)

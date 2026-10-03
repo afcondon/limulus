@@ -143,6 +143,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>freeze</code> · <code>thaw</code></td><td class="gloss">hold the cells</td></tr>
     <tr><td><code>gate PERCENT</code></td><td class="gloss">gate length</td></tr>
     <tr><td><code>pattern</code> · <code>transp</code> · <code>len</code> · <code>offset</code> <code>N N N N</code></td><td class="gloss">per head, one number each (patterns count from 1)</td></tr>
+    <tr><td><code>clock dur</code> · <code>clock step</code> · <code>clock dur step dur step</code></td><td class="gloss">what moves a head on: its notes' lengths (each cell held for its dur, a gate-off cell a rest), or its steps; one word for every head</td></tr>
     <tr><td><code>for BARS (MOVE)</code></td><td class="gloss">then restore the settings; the notes found are kept</td></tr>
   </table>
   <p class="dim" style="margin:8px 0 0">KIND: <code>notes gate skip glide len ratchet heads transp pattern speed key vel</code></p>

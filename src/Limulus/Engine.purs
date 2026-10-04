@@ -86,7 +86,7 @@ purerlUrl = "ws://localhost:3012/ws"
 -- | of the comparison either. `drums $ s "bd*2 sn"` is Tidal, but played on the
 -- | drum kit through the rig's drum routing, which GHCi has no way to reach.
 machineLine :: String -> Boolean
-machineLine block = firstWord `elem` [ "odonus", "vetula", "drums", "conspicillum", "balistes" ]
+machineLine block = firstWord `elem` [ "odonus", "vetula", "drums", "conspicillum", "balistes", "selene" ]
   where
   firstWord = fromMaybe "" (head (split (Pattern " ") (trim block)))
 

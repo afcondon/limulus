@@ -28,6 +28,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
 import Binnacle.TabBus as Bus
 import Limulus.Editor as Editor
+import Limulus.Choice as Choice
 import Limulus.Engine (Engine(..), GhciState(..), Reply, Socket, engineName)
 import Limulus.Engine as Engine
 import Web.HTML.HTMLElement as HTMLElement
@@ -66,6 +67,7 @@ data Action
   | Eval Editor.Block
   | Hush
   | SetEngine Engine
+  | EngineChosen Engine
   | RestartGhci
   | PollGhci
   | Connect
@@ -108,7 +110,8 @@ hush
 
 render :: forall m. State -> H.ComponentHTML Action () m
 render st =
-  HH.div [ HP.class_ (H.ClassName "page") ]
+  -- GHCi is said loudly: a rig line typed there fails (AC, 2026-10-04)
+  HH.div [ HP.class_ (H.ClassName (if st.engine == Ghci then "page on-ghci" else "page")) ]
     [ HH.header [ HP.class_ (H.ClassName "bar") ]
         [ HH.h1_ [ HH.text "limulus" ]
         , HH.span [ HP.class_ (H.ClassName "motto") ] [ HH.text "text in, sound out" ]
@@ -135,6 +138,18 @@ render st =
             [ HH.text "restart GHCi" ]
         ]
     ]
+
+-- | The engine's word in the shared choice.
+engineKey :: Engine -> String
+engineKey = case _ of
+  Ghci -> "ghci"
+  Purerl -> "architeuthis"
+
+engineOfKey :: String -> Maybe Engine
+engineOfKey = case _ of
+  "ghci" -> Just Ghci
+  "architeuthis" -> Just Purerl
+  _ -> Nothing
 
 engineButton :: forall m. State -> Engine -> String -> H.ComponentHTML Action () m
 engineButton st e lamp =
@@ -173,6 +188,10 @@ handleAction :: forall o. Action -> M o Unit
 handleAction = case _ of
   Init -> do
     { emitter, listener } <- liftEffect HS.create
+    -- the engine as the Dashboard last set it, and as it changes
+    chosen <- liftEffect Choice.load
+    for_ (engineOfKey chosen) \e -> H.modify_ _ { engine = e }
+    liftEffect $ Choice.onChange \k -> for_ (engineOfKey k) (HS.notify listener <<< EngineChosen)
     void $ H.subscribe emitter
     H.modify_ _ { listener = Just listener }
     H.getHTMLElementRef editorRef >>= traverse_ \el -> liftEffect do
@@ -216,7 +235,12 @@ handleAction = case _ of
     H.modify_ \s -> s { pending = [], sounding = false }
     announce
 
-  SetEngine e -> H.modify_ _ { engine = e }
+  SetEngine e -> do
+    H.modify_ _ { engine = e }
+    liftEffect (Choice.save (engineKey e))
+
+  -- the Dashboard (or another Limulus) chose
+  EngineChosen e -> H.modify_ _ { engine = e }
 
   RestartGhci -> do
     H.liftAff Engine.ghciRestart

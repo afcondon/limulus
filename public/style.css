@@ -122,3 +122,8 @@ footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--f
   .editor { border-right: none; border-bottom: 1px solid var(--fg-rule); }
   .engines { margin-left: 0; }
 }
+
+/* GHCi is said loudly: a rig line typed there fails (the Dashboard sets the
+   engine; 2026-10-04) */
+.page.on-ghci .bar { box-shadow: inset 0 -3px 0 #e0a030; }
+.page.on-ghci .engine.on { background: #e0a030; color: #1a1200; }

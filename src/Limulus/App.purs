@@ -79,7 +79,10 @@ data Action
 component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
   { initialState: \_ ->
-      { engine: Ghci, ghci: Off, socket: Nothing, purerlUp: false, log: []
+      -- Architeuthis first: Limulus is the rig's editor, and a machine line
+      -- typed at GHCi by mistake fails there (AC, 2026-10-04). GHCi is a
+      -- click away, for comparing the two.
+      { engine: Purerl, ghci: Off, socket: Nothing, purerlUp: false, log: []
       , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty
       , bus: Nothing, sounding: false }
   , render

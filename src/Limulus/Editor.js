@@ -113,6 +113,8 @@ export const _create = (parent, initial, handlers) => {
         dark,
         flashField,
         rigHeads,
+        // in a machine's panel the width is the page's to give: wrap
+        ...(document.documentElement.classList.contains("embedded") ? [EditorView.lineWrapping] : []),
         EditorView.updateListener.of((u) => { if (u.docChanged) save(u.state.doc.toString()); }),
       ],
     }),

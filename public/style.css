@@ -137,3 +137,31 @@ footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--f
 .embedded .editor { flex: 3; border-right: none; border-bottom: 1px solid var(--fg-rule); }
 .embedded .log { flex: 1; }
 .embedded .engines { margin-left: 0; }
+
+/* Paper: the machines' look, for the panel on their pages (?look=paper,
+   2026-10-04). Ink on warm paper, Georgia for the chrome, a plain mono for
+   the code; no glow, no scanlines. The rig's own words stay inverted. */
+.paper {
+  --bg:        #f6f2e7;
+  --bg-elev:   #ece6d6;
+  --fg:        #2b2820;
+  --fg-bright: #000000;
+  --fg-dim:    #8a8270;
+  --fg-rule:   #d8cfb8;
+  --amber:     #8a5a00;
+  --red:       #b3261e;
+  --cyan:      #2d5670;
+  --mono:      Georgia, serif;
+  --code:      "SF Mono", Menlo, monospace;
+  --glow:      none;
+}
+.paper body { font-size: 15px; }
+.paper body::before { display: none; }
+.paper .bar { background: linear-gradient(#f1eee5, #e6e2d6); border-bottom-color: #00000026; }
+.paper button, .paper .cheats { border-radius: 4px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; }
+.paper .engine { gap: 6px; }
+.paper .engine.on { color: #f6f2e7; background: #2d5670; border-color: #2d5670; }
+.paper .hush:hover { color: #fff; }
+.paper .cm-selectionBackground, .paper .cm-focused .cm-selectionBackground { background: #e3d7b4 !important; }
+.paper .cm-flash { background: #e0b24a; color: #000; }
+.paper .who { font-size: 12px; letter-spacing: 0.06em; }

@@ -8,6 +8,16 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <script src="./app.js?v=4"></script>
+  <script>
+    // Embedded in a machine's page (?embed): compact, and Escape asks the
+    // page to close the panel. Same origin, so the message names it.
+    if (new URLSearchParams(location.search).has("embed")) {
+      document.documentElement.classList.add("embedded");
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") window.parent.postMessage({ limulus: "close" }, location.origin);
+      }, true);
+    }
+  </script>
+  <script src="./app.js?v=5"></script>
 </body>
 </html>

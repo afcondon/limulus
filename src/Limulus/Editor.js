@@ -90,7 +90,7 @@ export const _create = (parent, initial, handlers) => {
   };
   const hush = () => { handlers.onHush(); return true; };
 
-  return new EditorView({
+  const view = new EditorView({
     parent,
     state: EditorState.create({
       doc: load(initial),
@@ -117,6 +117,18 @@ export const _create = (parent, initial, handlers) => {
       ],
     }),
   });
+  // One buffer, more than one Limulus: the tab, and the panel on a machine's
+  // page (same origin, same key). Every edit is saved at once and only one
+  // can be typed in at a time, so the stored buffer is always the latest:
+  // take it on focus, and live from another one's edits while not focused.
+  const adopt = (text) => {
+    if (text === null || text === view.state.doc.toString()) return;
+    const head = Math.min(view.state.selection.main.head, text.length);
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: head } });
+  };
+  window.addEventListener("focus", () => adopt(load(null)));
+  window.addEventListener("storage", (e) => { if (e.key === STORE && !document.hasFocus()) adopt(e.newValue); });
+  return view;
 };
 
 export const _focus = (view) => view.focus();

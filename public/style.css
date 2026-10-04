@@ -127,3 +127,13 @@ footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--f
    engine; 2026-10-04) */
 .page.on-ghci .bar { box-shadow: inset 0 -3px 0 #e0a030; }
 .page.on-ghci .engine.on { background: #e0a030; color: #1a1200; }
+
+/* Embedded: Limulus as a panel on a machine's page (?embed, 2026-10-04).
+   The page's own bar names the machine; here the editor gets the room, the
+   log sits under it, and Escape hands the panel back. */
+.embedded .bar { padding: 6px 12px; gap: 10px; }
+.embedded .bar h1, .embedded .motto, .embedded footer { display: none; }
+.embedded main { flex-direction: column; }
+.embedded .editor { flex: 3; border-right: none; border-bottom: 1px solid var(--fg-rule); }
+.embedded .log { flex: 1; }
+.embedded .engines { margin-left: 0; }

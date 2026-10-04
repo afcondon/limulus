@@ -1,7 +1,7 @@
 import { EditorView, keymap, lineNumbers, drawSelection, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view";
 import { EditorState, StateField, StateEffect } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab, toggleLineComment } from "@codemirror/commands";
-import { bracketMatching, StreamLanguage, syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { bracketMatching, StreamLanguage, syntaxHighlighting, HighlightStyle, foldService, foldGutter, codeFolding, foldKeymap } from "@codemirror/language";
 import { haskell } from "@codemirror/legacy-modes/mode/haskell";
 import { tags as t } from "@lezer/highlight";
 
@@ -31,13 +31,41 @@ const dark = EditorView.theme({
 // machineLine and the stage blocks). Inversion rather than a colour, since the
 // palette is already as green as it should be.
 const rigHead = new MatchDecorator({
-  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|balistes|v\d+)(?=\s*\$)/g,
+  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|balistes|selene|v\d+)(?=\s*\$)/g,
   decoration: Decoration.mark({ class: "cm-rig-head" }),
 });
 const rigHeads = ViewPlugin.fromClass(class {
   constructor(view) { this.decorations = rigHead.createDeco(view); }
   update(u) { this.decorations = rigHead.updateDeco(u, this.decorations); }
 }, { decorations: (v) => v.decorations });
+
+// Folding, by the buffer's shape (Tidal has no syntax tree here):
+// - a block (a run of non-blank lines) of several lines folds to its first;
+// - a block of comments only is a heading: it folds to its first line,
+//   hiding everything after it to the next heading. So `-- drums` over some
+//   lines makes a section.
+const blank = (doc, n) => doc.line(n).text.trim() === "";
+const isComment = (text) => /^\s*--/.test(text);
+const blockEnd = (doc, n) => { let m = n; while (m < doc.lines && !blank(doc, m + 1)) m++; return m; };
+const startsBlock = (doc, n) => !blank(doc, n) && (n === 1 || blank(doc, n - 1));
+const isHeading = (doc, n) => {
+  if (!startsBlock(doc, n)) return false;
+  for (let m = n; m <= blockEnd(doc, n); m++) if (!isComment(doc.line(m).text)) return false;
+  return true;
+};
+const folds = foldService.of((state, lineStart) => {
+  const doc = state.doc;
+  const n = doc.lineAt(lineStart).number;
+  if (!startsBlock(doc, n)) return null;
+  const end = blockEnd(doc, n);
+  if (isHeading(doc, n)) {
+    let last = end, m = end + 1;
+    while (m <= doc.lines && !isHeading(doc, m)) { if (!blank(doc, m)) last = m; m++; }
+    // folds to its first line, the section's title
+    return last > end ? { from: doc.line(n).to, to: doc.line(last).to } : null;
+  }
+  return end > n ? { from: doc.line(n).to, to: doc.line(end).to } : null;
+});
 
 // The block that was just sent lights up briefly, as in Tidal's editors.
 const flash = StateEffect.define();
@@ -101,6 +129,7 @@ export const _create = (parent, initial, handlers) => {
           { key: "Mod-.", run: hush },
           { key: "Mod-/", run: toggleLineComment },
           indentWithTab,
+          ...foldKeymap,
           ...historyKeymap,
           ...defaultKeymap,
         ]),
@@ -113,6 +142,9 @@ export const _create = (parent, initial, handlers) => {
         dark,
         flashField,
         rigHeads,
+        folds,
+        codeFolding({ placeholderText: "…" }),
+        foldGutter({ openText: "▾", closedText: "▸" }),
         // in a machine's panel the width is the page's to give: wrap
         ...(document.documentElement.classList.contains("embedded") ? [EditorView.lineWrapping] : []),
         EditorView.updateListener.of((u) => { if (u.docChanged) save(u.state.doc.toString()); }),

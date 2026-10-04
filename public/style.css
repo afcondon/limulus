@@ -165,3 +165,14 @@ footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--f
 .paper .cm-selectionBackground, .paper .cm-focused .cm-selectionBackground { background: #e3d7b4 !important; }
 .paper .cm-flash { background: #e0b24a; color: #000; }
 .paper .who { font-size: 12px; letter-spacing: 0.06em; }
+
+/* Folding: the gutter's marks, and what a fold leaves behind. */
+.cm-foldGutter .cm-gutterElement { color: var(--fg-dim); cursor: pointer; padding: 0 4px; }
+.cm-foldGutter .cm-gutterElement:hover { color: var(--fg-bright); }
+.cm-foldPlaceholder { background: none; border: 1px solid var(--fg-dim); color: var(--fg-dim); padding: 0 6px; margin-left: 6px; border-radius: 3px; }
+
+/* An empty log takes no room (the panel on a page is short of it). */
+.embedded .log:empty { display: none; }
+
+/* Flush (?frame=flush): the page draws the panel's edge; no window chrome. */
+.flush .bar { background: none; border-bottom: 1px solid var(--fg-rule); }

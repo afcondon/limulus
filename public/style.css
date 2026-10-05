@@ -176,3 +176,31 @@ footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--f
 
 /* Flush (?frame=flush): the page draws the panel's edge; no window chrome. */
 .flush .bar { background: none; border-bottom: 1px solid var(--fg-rule); }
+
+/* Swiss: Conspicillum's look (?look=swiss, 2026-10-05). Ink on near-white,
+   Helvetica for the chrome, SF Mono for the code, its one red accent. */
+.swiss {
+  --bg:        #fafaf8;
+  --bg-elev:   #f2f1ec;
+  --fg:        #141414;
+  --fg-bright: #000000;
+  --fg-dim:    #6d6d69;
+  --fg-rule:   #e3e2dc;
+  --amber:     #8a4b00;
+  --red:       #c8371e;
+  --cyan:      #1f5a7a;
+  --mono:      "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --code:      "SF Mono", Menlo, Consolas, monospace;
+  --glow:      none;
+}
+.swiss body { font-size: 13px; }
+.swiss body::before { display: none; }
+.swiss .bar { background: var(--bg); border-bottom-color: var(--fg-rule); }
+.swiss button, .swiss .cheats { border-radius: 2px; font-size: 11px; letter-spacing: 0.04em; padding: 2px 8px; border-color: #d4d3cc; }
+.swiss .engine { gap: 6px; }
+.swiss .engine.on { color: #fff; background: #141414; border-color: #141414; }
+.swiss .hush { color: var(--red); border-color: var(--red); }
+.swiss .hush:hover { background: var(--red); color: #fff; }
+.swiss .cm-selectionBackground, .swiss .cm-focused .cm-selectionBackground { background: rgba(200,55,30,.14) !important; }
+.swiss .cm-flash { background: rgba(200,55,30,.25); color: #000; }
+.swiss .who { font-size: 11px; letter-spacing: 0.04em; }

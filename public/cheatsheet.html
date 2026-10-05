@@ -164,7 +164,24 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>outscale off</code></td><td class="gloss">the output back to the grid's scale</td></tr>
     <tr><td><code>root d</code> · <code>root fs</code> · <code>root 2</code></td><td class="gloss">the root, apart from the scale, as in Tidal (C = 0)</td></tr>
   </table>
-  <p class="dim" style="margin:8px 0 0">Heard only with Odonus on Rig: the rig does the sampling. The same choices, as routes, are the Harmony matrix on the dashboard's Routing view: <code>scale</code> feeds <code>odonus.grid</code>; <code>harmony</code> and <code>outscale</code> feed <code>odonus.out</code>.</p>
+  <p class="dim" style="margin:8px 0 0">Heard only with Odonus on Rig: the rig does the sampling. These lines set Odonus directly; a route (below) says where its sets come from, as the Dashboard's patch bay does.</p>
+</section>
+
+<section>
+  <h2>Harmony routes <span class="tag rig">rig</span></h2>
+  <p class="lede">What shapes Odonus's two quantisations: the same table the Dashboard's patch bay writes, one route a line.</p>
+<pre class="copy">route $ odonus.grid &lt;- vetula 2
+route $ odonus.out &lt;- harmony "&lt;c'maj9 a'min11&gt;/2"
+route $ odonus.grid &lt;- none</pre>
+  <table>
+    <tr><td><code>odonus.grid</code></td><td class="gloss">what a cell's value maps onto: the melody's shape. A scale; or a chord, whose cells then play its arpeggios, octaves kept (a ninth stays a ninth)</td></tr>
+    <tr><td><code>odonus.out</code></td><td class="gloss">what each note snaps to at the end, past its head's offset: a chord colours the melody without changing its shape</td></tr>
+    <tr><td><code>vetula key</code></td><td class="gloss">Vetula's scale, which may be "outside" its chords</td></tr>
+    <tr><td><code>vetula N</code></td><td class="gloss">Vetula's voice N: its chords, as voiced. It still sounds where its card sends it</td></tr>
+    <tr><td><code>scale "PATTERN" ROOT</code></td><td class="gloss">a pattern of scale names, on a root</td></tr>
+    <tr><td><code>harmony "PATTERN"</code></td><td class="gloss">a chord pattern, as voiced</td></tr>
+    <tr><td><code>none</code></td><td class="gloss">no route: Grid follows Odonus's own scale; Output snaps to the Grid's set</td></tr>
+  </table>
 </section>
 
 <section>

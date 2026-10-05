@@ -31,7 +31,7 @@ const dark = EditorView.theme({
 // machineLine and the stage blocks). Inversion rather than a colour, since the
 // palette is already as green as it should be.
 const rigHead = new MatchDecorator({
-  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|balistes|selene|v\d+)(?=\s*\$)/g,
+  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|balistes|selene|route|v\d+)(?=\s*\$)/g,
   decoration: Decoration.mark({ class: "cm-rig-head" }),
 });
 const rigHeads = ViewPlugin.fromClass(class {

@@ -264,6 +264,45 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
 </section>
 
 <section class="wide">
+  <h2>Selene: polysignals <span class="tag rig">rig</span></h2>
+  <p class="lede">One line, one bank of eight outputs, all changing on the same instant. A line changes only what it names; the Selene page follows. A single value sets every output, a quoted list sets them in turn and wraps.</p>
+<pre class="copy">selene $ lfo es9main # rate "0.5 1 2 4" # phase "0 0.25"</pre>
+<pre class="copy">selene $ euclid es9gt0 # hits 5</pre>
+<pre class="copy">selene $ clock es9gt1 # div 1/8 # mult "1 2 3 4 5 6 7 8" # pw 25</pre>
+  <h3>Banks</h3>
+  <table>
+    <tr><td><code>es9main</code></td><td class="gloss">ES-9 buses 8–15, panel jacks 1–8</td></tr>
+    <tr><td><code>es9gt0</code> <code>es9gt1</code></td><td class="gloss">ES-5 gate blocks</td></tr>
+    <tr><td><code>es98cv0</code></td><td class="gloss">ESX-8CV block</td></tr>
+    <tr><td><code>fh2_0</code></td><td class="gloss">the FH-2's bank</td></tr>
+  </table>
+  <h3>Kinds and their parameters</h3>
+  <table>
+    <tr><td><code>lfo</code></td><td class="gloss"><code>rate</code> (Hz) · <code>phase</code> · <code>level</code> · <code>sin sqr tri saw rnd nse</code> (how much of each)</td></tr>
+    <tr><td><code>euclid</code></td><td class="gloss"><code>hits</code> · <code>steps</code> (up to 32) · <code>rate</code> (steps per beat) · <code>acc</code></td></tr>
+    <tr><td><code>clock</code></td><td class="gloss"><code>div</code> (1/4, 1/8T …) · <code>mult</code> · <code>pw</code> (%) · <code>phase</code></td></tr>
+    <tr><td><code>note</code></td><td class="gloss"><code>note</code> (C3 or 48)</td></tr>
+    <tr><td><code>env</code></td><td class="gloss"><code>a d s r</code> · <code>depth</code> · <code>vel</code> · <code>time</code> · <code>rnd</code> · <code>ashape dshape rshape</code></td></tr>
+  </table>
+  <h3>Blocks <span class="dim" style="text-transform:none">· a whole bank from a few parameters; other terms apply after</span></h3>
+<pre class="copy">selene $ ochd es9main # rate 0.03 # spread 40</pre>
+<pre class="copy">selene $ divider es9gt0 # by "1 2 3 4 6 8 12 16"</pre>
+<pre class="copy">selene $ toussaint es9gt1</pre>
+<pre class="copy">selene $ chord es98cv0 # root D3 # quality min9</pre>
+  <table>
+    <tr><td><code>ochd</code></td><td class="gloss">eight free LFOs, slow to fast at uneven ratios, never locking · <code>rate</code> (slowest) <code>spread</code> <code>shape</code> <code>depth</code></td></tr>
+    <tr><td><code>quadrature</code></td><td class="gloss">two fours a quarter-cycle apart · <code>rate</code> <code>ratio</code> <code>shape</code> <code>depth</code></td></tr>
+    <tr><td><code>drift</code></td><td class="gloss">eight slow, smooth random voltages · <code>rate</code> <code>depth</code></td></tr>
+    <tr><td><code>divider</code></td><td class="gloss">a pulse every n steps of the master clock · <code>by</code> (default 1–8) <code>rate</code> (1 quarters, 4 sixteenths)</td></tr>
+    <tr><td><code>toussaint</code></td><td class="gloss">eight traditional euclidean rhythms: tresillo, cinquillo, ruchenitza, khafif-e-ramal, West African bell, Venda clapping, bossa nova, a Central African bell</td></tr>
+    <tr><td><code>polymeter</code></td><td class="gloss">the same hits over 5 to 12 steps, phasing · <code>hits</code> <code>rate</code></td></tr>
+    <tr><td><code>scatter</code></td><td class="gloss">random euclids kept musical · <code>seed</code> <code>rate</code></td></tr>
+    <tr><td><code>chord</code></td><td class="gloss">a chord climbing the octaves · <code>root</code> <code>quality</code> (maj min maj7 min7 dom7 min9 sus2 sus4 dim aug)</td></tr>
+  </table>
+  <p class="dim" style="margin:8px 0 0;font-size:16px"><code>selene $ hush</code> silences every bank; the Dashboard's Selene fish resumes them.</p>
+</section>
+
+<section class="wide">
   <h2>Scales by name <span class="tag both">both</span></h2>
   <p class="lede">Tidal's <code>scale</code>, held to Haskell Tidal by the oracle. The same names serve <code>odonus $ scale "…"</code>.</p>
 <pre class="copy">d1 $ n (scale "&lt;dorian mixolydian&gt;" "0 .. 7" + "c") # s "superpiano"</pre>

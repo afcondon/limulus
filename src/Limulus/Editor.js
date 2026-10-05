@@ -160,12 +160,20 @@ export const _create = (parent, initial, handlers) => {
     const head = Math.min(view.state.selection.main.head, text.length);
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, selection: { anchor: head } });
   };
-  window.addEventListener("focus", () => adopt(load(null)));
+  window.addEventListener("focus", () => {
+    adopt(load(null));
+    // the page handed its frame the keyboard: give it to the editor
+    if (embedded() && !view.hasFocus) view.focus();
+  });
   window.addEventListener("storage", (e) => { if (e.key === STORE && !document.hasFocus()) adopt(e.newValue); });
   return view;
 };
 
-export const _focus = (view) => view.focus();
+// Embedded in a page, Limulus does not take the keyboard on loading: the
+// page's own keys (Space, b, c …) stay the page's until Limulus is clicked
+// into, or the page gives its frame the focus (see the window focus below).
+const embedded = () => document.documentElement.classList.contains("embedded");
+export const _focus = (view) => { if (!embedded()) view.focus(); };
 
 // The block (run of non-blank lines) whose first line starts with `head`
 // followed by `$` (`v3 $ …`), as {from, to, text}, or null.

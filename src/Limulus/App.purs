@@ -12,13 +12,16 @@ module Limulus.App (component) where
 import Prelude
 
 import Control.Monad.Rec.Class (forever)
-import Data.Array (cons, elem, filterA, range, snoc, take, uncons)
+import Data.Array (cons, elem, filter, filterA, range, snoc, take, uncons)
+import Data.Tuple (Tuple(..))
 import Data.Foldable (for_, traverse_)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String (Pattern(..), indexOf, stripPrefix)
 import Limulus.Stage as Stage
+import Limulus.Synced as Synced
+import Foreign.Object as Object
 import Effect.Aff (Aff, Milliseconds(..), delay)
 import Effect.Class (liftEffect)
 import Halogen as H
@@ -60,6 +63,9 @@ type State =
   -- still be playing (from the first block sent to the last hush).
   , bus :: Maybe Bus.Bus
   , sounding :: Boolean
+  -- the objects whose block differs from the stage and has been said so, so
+  -- the note is made once, not at every write
+  , noted :: Array Stage.Obj
   }
 
 data Action
@@ -86,7 +92,7 @@ component = H.mkComponent
       -- click away, for comparing the two.
       { engine: Purerl, ghci: Off, socket: Nothing, purerlUp: false, log: []
       , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty
-      , bus: Nothing, sounding: false }
+      , bus: Nothing, sounding: false, noted: [] }
   , render
   , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Init }
   }
@@ -329,6 +335,7 @@ evalObj b sl = do
     , log = take 60 (cons { id, engine: Purerl, block: Stage.headOf obj <> " $ " <> sl.body, reply: Nothing } s.log)
     , objects = Map.insert obj sl.body s.objects
     }
+  agreed obj sl.body
   sendLine id ("stage-text " <> Stage.objKey obj <> " " <> sl.body)
 
 -- | A stage frame about an object. One written elsewhere replaces its block
@@ -336,9 +343,25 @@ evalObj b sl = do
 -- | is never overwritten; it is noted instead, and evaluating it wins.
 stageFrame :: forall o. Stage.StageFrame -> M o Unit
 stageFrame = case _ of
-  Stage.Table objects -> H.modify_ _ { objects = objects }
+  -- The stage's whole table (on subscribing): a block still saying what it
+  -- last agreed on is behind, so it takes the stage's text; one that says the
+  -- stage's text is in step.
+  Stage.Table objects -> do
+    H.modify_ _ { objects = objects }
+    st <- H.get
+    -- read fresh: every Limulus (the tab, a page's panel) shares it
+    synced <- liftEffect Synced.load
+    for_ st.editor \ed -> for_ (Map.toUnfoldable objects :: Array (Tuple Stage.Obj String)) \(Tuple obj t) -> do
+      mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
+      for_ mblock \blk -> do
+        let body = Stage.bodyOf blk.text
+        if body == t then agreed obj t
+        else when (Object.lookup (Stage.objKey obj) synced == Just body) do
+          liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
+          agreed obj t
   Stage.Written obj text -> do
     st <- H.get
+    synced <- liftEffect Synced.load
     let prev = Map.lookup obj st.objects
     H.modify_ _ { objects = maybe (Map.delete obj st.objects) (\t -> Map.insert obj t st.objects) text }
     for_ st.editor \ed -> do
@@ -346,12 +369,18 @@ stageFrame = case _ of
       for_ mblock \blk -> case text of
         Nothing -> note obj ("removed in " <> Stage.ownerOf obj <> "; this block no longer names anything") false
         Just t
-          | Stage.bodyOf blk.text == t -> pure unit
-          | Just (Stage.bodyOf blk.text) == prev -> liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
+          | Stage.bodyOf blk.text == t -> agreed obj t
+          | Just (Stage.bodyOf blk.text) == prev || Object.lookup (Stage.objKey obj) synced == Just (Stage.bodyOf blk.text) -> do
+              liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
+              agreed obj t
           -- what the block was last in step with is unknown (it was refused):
           -- keep the typing, to be fixed and evaluated again
           | prev == Nothing -> pure unit
-          | otherwise -> note obj ("changed in " <> Stage.ownerOf obj <> "; this block differs, so it was left alone (evaluate it to make yours the one)") false
+          -- an edit in hand: said once, not at every write
+          | elem obj st.noted -> pure unit
+          | otherwise -> do
+              H.modify_ \s -> s { noted = cons obj s.noted }
+              note obj ("changed in " <> Stage.ownerOf obj <> "; this block differs, so it was left alone (evaluate it to make yours the one)") false
   -- A page handed over a block (a mark, as code): add it at the end, shown.
   Stage.Paste key text -> do
     st <- H.get
@@ -366,13 +395,32 @@ stageFrame = case _ of
       mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
       case mblock, Map.lookup obj st.objects of
         Just blk, _ -> liftEffect (Editor.reveal ed blk.from blk.to)
-        Nothing, Just t -> liftEffect (Editor.append ed (Stage.blockOf obj t))
+        Nothing, Just t -> do
+          liftEffect (Editor.append ed (Stage.blockOf obj t))
+          agreed obj t
         Nothing, Nothing -> note obj (Stage.ownerOf obj <> " asked to show it, but the stage does not have it") false
   -- A refused block is left as typed: forget what the stage said for it, so
   -- the real line, republished by its page, does not overwrite it.
   Stage.Rejected obj reason -> do
+    disagreed obj
     H.modify_ \s -> s { objects = Map.delete obj s.objects }
     note obj (reason <> "; your block is kept as typed") false
+
+-- | A block and the stage agree on `text` for `obj`: remember it (across a
+-- | reload), and any note about it is done with.
+agreed :: forall o. Stage.Obj -> String -> M o Unit
+agreed obj text = do
+  synced <- liftEffect Synced.load
+  when (Object.lookup (Stage.objKey obj) synced /= Just text) $
+    liftEffect (Synced.save (Object.insert (Stage.objKey obj) text synced))
+  H.modify_ \s -> s { noted = filter (_ /= obj) s.noted }
+
+-- | Forget what `obj`'s block agreed on: the stage refused it, so the block is
+-- | typing to keep, not text to bring up to date.
+disagreed :: forall o. Stage.Obj -> M o Unit
+disagreed obj = do
+  synced <- liftEffect Synced.load
+  liftEffect (Synced.save (Object.delete (Stage.objKey obj) synced))
 
 -- | Tell the dashboard Limulus is open, and whether it may be sounding.
 announce :: forall o. M o Unit

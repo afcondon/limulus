@@ -2,3 +2,5 @@ node_modules/
 output/
 .spago/
 ghc-tidal
+# the bundle step's start mark (the freshness check)
+.bundle-start

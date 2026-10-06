@@ -202,6 +202,8 @@ cardProgression body = case filter (_ /= "") (split (Pattern " ") (trim body)) o
     inner <- stripPrefix (Pattern "\"") q
     pure (fromMaybe inner (stripSuffix (Pattern "\"") inner))
   toks | isJust (Array.head toks >>= stripPrefix (Pattern "ch")) -> case Array.index toks 1 of
-    Just t | t /= "-" && not (isJust (stripPrefix (Pattern "\"") t)) -> Just t
+    -- a name, quoted or not (chords written in have brackets)
+    Just t | t /= "-" && indexOf (Pattern "[") t == Nothing ->
+      Just (fromMaybe t (stripPrefix (Pattern "\"") t >>= stripSuffix (Pattern "\"")))
     _ -> Nothing
   _ -> Nothing

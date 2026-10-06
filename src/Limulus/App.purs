@@ -384,7 +384,9 @@ stageFrame = case _ of
     for_ st.editor \ed -> do
       mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
       for_ mblock \blk -> case text of
-        Nothing -> note obj ("removed in " <> Stage.ownerOf obj <> "; this block no longer names anything") false
+        Nothing
+          | elem (Stage.bodyOf blk.text) [ "hush", "silence" ] -> note obj "voice removed" true
+          | otherwise -> note obj ("removed in " <> Stage.ownerOf obj <> "; this block no longer names anything") false
         Just t
           | Stage.bodyOf blk.text == t -> agreed obj t
           | Just (Stage.bodyOf blk.text) == prev || Object.lookup (Stage.objKey obj) synced == Just (Stage.bodyOf blk.text) -> do

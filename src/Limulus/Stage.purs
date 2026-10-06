@@ -28,6 +28,8 @@ module Limulus.Stage
   , freeCard
   , bodyOf
   , blockOf
+  , tableProgressions
+  , cardProgression
   ) where
 
 import Prelude
@@ -40,7 +42,7 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Nullable (Nullable, toMaybe)
-import Data.String (Pattern(..), indexOf, joinWith, split, stripPrefix, trim)
+import Data.String (Pattern(..), indexOf, joinWith, split, stripPrefix, stripSuffix, trim)
 import Data.String.CodeUnits as CU
 import Data.Tuple (Tuple(..))
 import Foreign.Object (Object)
@@ -110,6 +112,9 @@ data StageFrame
   | Written Obj (Maybe String)
   | Open Obj
   | Rejected Obj String
+  -- | A progression saved (`Just` its chords) or deleted in Vetula: what a
+  -- | voice line (`v1 $ vetula "name"`) plays.
+  | Progression String (Maybe String)
   -- | A block of text a page hands over to add to the buffer (a mark, as
   -- | code), and whose it is (`odonus/mark`).
   | Paste String String
@@ -130,6 +135,11 @@ readFrame msg =
       w :: { key :: String, text :: Nullable String } <- hush (readJSON json)
       o <- objOfKey w.key
       pure (Written o (toMaybe w.text)))
+  `orElse`
+  (stripPrefix (Pattern "stage-text ") msg >>= \json -> do
+      w :: { key :: String, text :: Nullable String } <- hush (readJSON json)
+      name <- stripPrefix (Pattern progPrefix) w.key
+      pure (Progression name (toMaybe w.text)))
   `orElse`
   (stripPrefix (Pattern "stage-open ") msg >>= \json -> do
       w :: { key :: String } <- hush (readJSON json)
@@ -171,3 +181,27 @@ freeCard :: Map Obj String -> (Int -> Boolean) -> Int
 freeCard objects inBuffer =
   let n = Map.size objects + 2
   in fromMaybe n (find (\k -> not (Map.member (Card k) objects) && not (inBuffer k)) (range 1 n))
+
+progPrefix :: String
+progPrefix = "vetula/progression/"
+
+-- | The names of the progressions saved in Vetula, from the whole table
+-- | (`Nothing` for any other frame).
+tableProgressions :: String -> Maybe (Array String)
+tableProgressions msg = do
+  json <- stripPrefix (Pattern "stage-texts ") msg
+  table :: Object { text :: String } <- hush (readJSON json)
+  pure (mapMaybe (stripPrefix (Pattern progPrefix)) (Object.keys table))
+
+-- | The progression a card's line names, if it names one: `vetula "name" …`
+-- | or `ch3 name "0 1" …` (rather than chords written in, or `-`).
+cardProgression :: String -> Maybe String
+cardProgression body = case filter (_ /= "") (split (Pattern " ") (trim body)) of
+  toks | Array.head toks == Just "vetula" -> do
+    q <- Array.index toks 1
+    inner <- stripPrefix (Pattern "\"") q
+    pure (fromMaybe inner (stripSuffix (Pattern "\"") inner))
+  toks | isJust (Array.head toks >>= stripPrefix (Pattern "ch")) -> case Array.index toks 1 of
+    Just t | t /= "-" && not (isJust (stripPrefix (Pattern "\"") t)) -> Just t
+    _ -> Nothing
+  _ -> Nothing

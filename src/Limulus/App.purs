@@ -13,7 +13,7 @@ import Prelude
 
 import Control.Monad.Rec.Class (forever)
 import Data.Array (cons, elem, filter, filterA, range, snoc, take, uncons)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst)
 import Data.Foldable (for_, traverse_)
 import Data.Map (Map)
 import Data.Map as Map
@@ -66,6 +66,9 @@ type State =
   -- the objects whose block differs from the stage and has been said so, so
   -- the note is made once, not at every write
   , noted :: Array Stage.Obj
+  -- the progressions saved in Vetula, which voice lines name (`Nothing`
+  -- until the stage answers)
+  , progressions :: Maybe (Array String)
   }
 
 data Action
@@ -91,7 +94,7 @@ component = H.mkComponent
       -- typed at GHCi by mistake fails there (AC, 2026-10-04). GHCi is a
       -- click away, for comparing the two.
       { engine: Purerl, ghci: Off, socket: Nothing, purerlUp: false, log: []
-      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty
+      , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty, progressions: Nothing
       , bus: Nothing, sounding: false, noted: [] }
   , render
   , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Init }
@@ -284,7 +287,12 @@ handleAction = case _ of
       H.liftAff (delay (Milliseconds 3000.0))
       handleAction Connect
 
-  PurerlSaid text | Stage.isStageFrame text -> for_ (Stage.readFrame text) stageFrame
+  PurerlSaid text | Stage.isStageFrame text -> do
+    for_ (Stage.tableProgressions text) \names -> do
+      H.modify_ _ { progressions = Just names }
+      st <- H.get
+      for_ (Map.toUnfoldable st.objects :: Array (Tuple Stage.Obj String)) \(Tuple obj body) -> unknownName obj body
+    for_ (Stage.readFrame text) stageFrame
 
   PurerlSaid text -> do
     st <- H.get
@@ -337,6 +345,15 @@ evalObj b sl = do
     }
   agreed obj sl.body
   sendLine id ("stage-text " <> Stage.objKey obj <> " " <> sl.body)
+  unknownName obj sl.body
+
+-- | A voice naming a progression Vetula has not saved is silent: say so.
+unknownName :: forall o. Stage.Obj -> String -> M o Unit
+unknownName obj body = do
+  st <- H.get
+  for_ (Stage.cardProgression body) \name -> for_ st.progressions \names ->
+    unless (elem name names) $
+      note obj ("no progression called " <> name <> " is saved in Vetula, so this voice is silent until one is") false
 
 -- | A stage frame about an object. One written elsewhere replaces its block
 -- | only if the block still says what the stage last said, so an edit in hand
@@ -381,6 +398,21 @@ stageFrame = case _ of
           | otherwise -> do
               H.modify_ \s -> s { noted = cons obj s.noted }
               note obj ("changed in " <> Stage.ownerOf obj <> "; this block differs, so it was left alone (evaluate it to make yours the one)") false
+  -- A progression saved or deleted in Vetula: the voices naming it say what
+  -- that did to them.
+  Stage.Progression name text -> do
+    st <- H.get
+    let
+      was = maybe false (elem name) st.progressions
+      naming = map fst (filter (\(Tuple _ body) -> Stage.cardProgression body == Just name)
+        (Map.toUnfoldable st.objects :: Array (Tuple Stage.Obj String)))
+    H.modify_ _ { progressions = map (\ns -> case text of
+                    Nothing -> filter (_ /= name) ns
+                    Just _ -> if elem name ns then ns else snoc ns name) st.progressions }
+    for_ naming \obj -> case text of
+      Nothing -> note obj (name <> " was deleted in Vetula, so this voice is silent") false
+      Just _ | not was -> note obj (name <> " is saved in Vetula now; this voice plays it") true
+      Just _ -> pure unit
   -- A page handed over a block (a mark, as code): add it at the end, shown.
   Stage.Paste key text -> do
     st <- H.get

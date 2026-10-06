@@ -30,6 +30,9 @@ module Limulus.Stage
   , blockOf
   , tableProgressions
   , cardProgression
+  , voiceLetter
+  , voiceOfName
+  , routeVoice
   ) where
 
 import Prelude
@@ -65,11 +68,26 @@ objOfKey key
   | key == "conspicillum/line" = Just Cloud
   | otherwise = Card <$> (stripPrefix (Pattern "vetula/v") key >>= Int.fromString)
 
--- | The block's head word: `v3`, `conspicillum`.
+-- | The block's head word: `Q` (a Vetula voice), `conspicillum`.
 headOf :: Obj -> String
 headOf = case _ of
-  Card n -> "v" <> show n
+  Card n -> voiceLetter n
   Cloud -> "conspicillum"
+
+-- | A Vetula voice's name: P..W (AC, 2026-10-06), so a number is only ever
+-- | a MIDI channel. Inside (the stage key) a voice is numbered, P = 1; as
+-- | `Reef.Vetula.VoiceName`, which Limulus does not import.
+voiceLetters :: Array String
+voiceLetters = [ "P", "Q", "R", "S", "T", "U", "V", "W" ]
+
+voiceLetter :: Int -> String
+voiceLetter n = fromMaybe ("v" <> show n) (Array.index voiceLetters (n - 1))
+
+-- | A voice from its letter, or the old `v3`.
+voiceOfName :: String -> Maybe Int
+voiceOfName s = case Array.elemIndex s voiceLetters of
+  Just i -> Just (i + 1)
+  Nothing -> stripPrefix (Pattern "v") s >>= Int.fromString
 
 -- | The page that owns the object, for the log.
 ownerOf :: Obj -> String
@@ -98,7 +116,7 @@ stageLine block = do
     -- `conspicillum $ hush` is for the rig, not a line
     "conspicillum" | body == "hush" -> Nothing
     "conspicillum" -> Just (Just Cloud)
-    _ -> Just <$> (Card <$> (stripPrefix (Pattern "v") head >>= Int.fromString))
+    _ -> Just <$> (Card <$> voiceOfName head)
   pure { obj, body }
 
 -- | What follows the `$`, one line, spaces trimmed.
@@ -207,3 +225,11 @@ cardProgression body = case filter (_ /= "") (split (Pattern " ") (trim body)) o
       Just (fromMaybe t (stripPrefix (Pattern "\"") t >>= stripSuffix (Pattern "\"")))
     _ -> Nothing
   _ -> Nothing
+
+-- | The voice a route line names, if it names one: `odonus.out <- vetula Q`.
+routeVoice :: String -> Maybe String
+routeVoice block = do
+  at <- indexOf (Pattern "<-") block
+  case filter (_ /= "") (split (Pattern " ") (trim (CU.drop (at + 2) block))) of
+    [ "vetula", v ] | v /= "key" -> Just v
+    _ -> Nothing

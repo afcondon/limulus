@@ -100,8 +100,12 @@ const blockAt = (state) => {
   return { from: doc.line(first).from, to: doc.line(last).to };
 };
 
+// Vetula's voices are lettered P..W (2026-10-06): a block headed `v3 $` from
+// before is renamed once, as Limulus now finds it by its letter.
+const VOICES = "PQRSTUVW";
+const relabel = (text) => text.replace(/^v([1-8])(\s*\$)/gm, (_, n, rest) => VOICES[n - 1] + rest);
 const load = (fallback) => {
-  try { return localStorage.getItem(STORE) ?? fallback; } catch { return fallback; }
+  try { const t = localStorage.getItem(STORE); return t == null ? fallback : relabel(t); } catch { return fallback; }
 };
 const save = (text) => {
   try { localStorage.setItem(STORE, text); } catch { /* private window: fine */ }
@@ -165,7 +169,7 @@ export const _create = (parent, initial, handlers) => {
     // the page handed its frame the keyboard: give it to the editor
     if (embedded() && !view.hasFocus) view.focus();
   });
-  window.addEventListener("storage", (e) => { if (e.key === STORE && !document.hasFocus()) adopt(e.newValue); });
+  window.addEventListener("storage", (e) => { if (e.key === STORE && !document.hasFocus() && e.newValue != null) adopt(relabel(e.newValue)); });
   return view;
 };
 

@@ -236,6 +236,13 @@ handleAction = case _ of
         reply <- H.liftAff (Engine.ghciEval block)
         handleAction (Answered id reply)
       Purerl -> sendPurerl id block
+    -- a route naming a voice that is not playing feeds Odonus nothing: say so
+    for_ (Stage.routeVoice block) \v -> do
+      let known = maybe false (\n -> Map.member (Stage.Card n) st.objects) (Stage.voiceOfName v)
+      unless known $ H.modify_ \s -> s
+        { nextId = s.nextId + 1
+        , log = take 60 (cons { id: s.nextId, engine: Purerl, block: "route", reply: Just { ok: false, out: "no voice " <> v <> " is playing (voices are P to W), so this feeds Odonus nothing until there is one" } } s.log)
+        }
 
   Hush -> do
     void $ H.fork $ void $ H.liftAff (Engine.ghciEval "hush")

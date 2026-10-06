@@ -89,7 +89,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>d1 $ … </code> · <code>hush</code> · <code>setcps</code></td><td class="gloss">plain Tidal, to the selected engine (GHCi or Architeuthis) <span class="tag both">both</span></td></tr>
     <tr><td><code>drums $ …</code></td><td class="gloss">Tidal, played on the drum kit <span class="tag rig">rig</span></td></tr>
     <tr><td><code>odonus $ …</code></td><td class="gloss">a move for Odonus, or a Review cue <span class="tag rig">rig</span></td></tr>
-    <tr><td><code>v3 $ …</code></td><td class="gloss">a Vetula voice (v1–v8) <span class="tag rig">rig</span></td></tr>
+    <tr><td><code>Q $ …</code></td><td class="gloss">a Vetula voice, lettered <code>P</code> to <code>W</code> <span class="tag rig">rig</span></td></tr>
     <tr><td><code>conspicillum $ …</code></td><td class="gloss">Conspicillum's line, as if typed on its page <span class="tag rig">rig</span></td></tr>
     <tr><td><code>vetula $ mark</code> …</td><td class="gloss">a Review cue for Vetula <span class="tag rig">rig</span></td></tr>
   </table>
@@ -98,7 +98,7 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
     <tr><td><code>hush</code> · ⌘.</td><td class="gloss">stop all sound: both engines, every machine, the ES-9's generators</td></tr>
     <tr><td><code>odonus $ hush</code></td><td class="gloss">one machine: also <code>vetula</code> <code>balistes</code> <code>drums</code> <code>conspicillum</code> <code>selene</code> (its ES-9 signals; the FH-2's run on)</td></tr>
     <tr><td><code>d1 $ silence</code></td><td class="gloss">one Tidal stream, as in Tidal</td></tr>
-    <tr><td><code>v3 $ hush</code> · <code>v3 $ silence</code></td><td class="gloss">remove Vetula voice 3</td></tr>
+    <tr><td><code>Q $ hush</code> · <code>Q $ silence</code></td><td class="gloss">remove Vetula voice Q</td></tr>
   </table>
   <p style="margin:8px 0 0"><strong>Hush silences, clear forgets.</strong> <code>odonus $ hush</code> stops the machine, its loops and their patterns, but keeps its marks and record buffer, so <code>odonus $ loop 2</code> brings a loop straight back. <code>odonus $ clear</code> forgets them.</p>
   <p class="dim" style="margin:6px 0 0;font-size:16px">A hushed machine starts again from its page (Rig, play); drums and Conspicillum also with their next line.</p>
@@ -171,14 +171,14 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
 <section>
   <h2>Harmony routes <span class="tag rig">rig</span></h2>
   <p class="lede">What shapes Odonus's two quantisations: the same table the Dashboard's patch bay writes, one route a line.</p>
-<pre class="copy">route $ odonus.grid &lt;- vetula 2
+<pre class="copy">route $ odonus.grid &lt;- vetula Q
 route $ odonus.out &lt;- harmony "&lt;c'maj9 a'min11&gt;/2"
 route $ odonus.grid &lt;- none</pre>
   <table>
     <tr><td><code>odonus.grid</code></td><td class="gloss">what a cell's value maps onto: the melody's shape. A scale; or a chord, whose cells then play its arpeggios, octaves kept (a ninth stays a ninth)</td></tr>
     <tr><td><code>odonus.out</code></td><td class="gloss">what each note snaps to at the end, past its head's offset: a chord colours the melody without changing its shape</td></tr>
     <tr><td><code>vetula key</code></td><td class="gloss">Vetula's scale, which may be "outside" its chords</td></tr>
-    <tr><td><code>vetula N</code></td><td class="gloss">Vetula's voice N: its chords, as voiced. It still sounds where its line sends it</td></tr>
+    <tr><td><code>vetula Q</code></td><td class="gloss">Vetula's voice Q: its chords, as voiced. It still sounds where its line sends it (a muted voice still shapes)</td></tr>
     <tr><td><code>scale "PATTERN" ROOT</code></td><td class="gloss">a pattern of scale names, on a root</td></tr>
     <tr><td><code>harmony "PATTERN"</code></td><td class="gloss">a chord pattern, as voiced</td></tr>
     <tr><td><code>none</code></td><td class="gloss">no route: Grid follows Odonus's own scale; Output snaps to the Grid's set</td></tr>
@@ -209,9 +209,9 @@ route $ odonus.grid &lt;- none</pre>
 
 <section class="wide">
   <h2>Vetula voices <span class="tag rig">rig</span></h2>
-  <p class="lede">A voice is one line, <code>v1 $ …</code> to <code>v8 $ …</code>, that plays a progression you saved in Vetula, by its name. Save the progression again and every voice naming it follows. Vetula's <strong>+ voice</strong> adds a line for the progression you have open; run it to hear it. Vetula's drawer lists the voices playing. <code>v3 $ hush</code> removes one.</p>
-<pre class="copy">v3 $ vetula "cow-umbrella-bell" # arpup 8</pre>
-<pre class="copy">v6 $ ch3 "cow-umbrella-bell"
+  <p class="lede">A voice is one line, lettered <code>P $ …</code> to <code>W $ …</code>, that plays a progression you saved in Vetula, by its name. A letter is always a voice and a number always a MIDI channel. Save the progression again and every voice naming it follows. Vetula's <strong>+ voice</strong> adds a line for the progression you have open; run it to hear it. Vetula's drawer lists the voices playing. <code>Q $ hush</code> removes one.</p>
+<pre class="copy">P $ vetula "cow-umbrella-bell" # arpup 8</pre>
+<pre class="copy">U $ ch3 "cow-umbrella-bell"
   # voice drop2
   # arpup 4 # every 4
   # strum 14</pre>
@@ -219,7 +219,7 @@ route $ odonus.grid &lt;- none</pre>
   <div>
   <h3>The line</h3>
   <table>
-    <tr><td><code>vetula "NAME"</code></td><td class="gloss">the saved progression NAME, on the voice's own channel (<code>v3</code>: channel 3)</td></tr>
+    <tr><td><code>vetula "NAME"</code></td><td class="gloss">the saved progression NAME, on the voice's own channel (<code>P</code> 1, <code>Q</code> 2, … <code>W</code> 8)</td></tr>
     <tr><td><code>chN "NAME"</code></td><td class="gloss">the same, on MIDI channel N</td></tr>
     <tr><td><code>chN "&lt;[c4,e4,g4] …&gt;"</code></td><td class="gloss">chords written in instead of a name (Tidal's note names: <code>c5</code> = 60)</td></tr>
     <tr><td><code>"0 1 2 3"</code> <span class="dim">(after the name or chords)</span></td><td class="gloss">mini-notation over chord indices: one cycle a bar. Leave it out for one chord per bar, in order (written-in chords: one per beat).</td></tr>
@@ -247,7 +247,7 @@ route $ odonus.grid &lt;- none</pre>
   <table>
     <tr><td><code>out midi</code> <span class="dim">(default)</span> · <code>out rig</code></td><td class="gloss">sound, played by the rig on the voice's channel</td></tr>
     <tr><td><code>out odo</code></td><td class="gloss">no sound: conducts Odonus's harmony</td></tr>
-    <tr><td><code>mute</code></td><td class="gloss">silent, kept</td></tr>
+    <tr><td><code>mute</code></td><td class="gloss">silent, kept; still shapes Odonus if a route names it</td></tr>
   </table>
   <p class="dim" style="margin:8px 0 0">A name not saved in Vetula plays nothing until it is; Limulus says so beside the line.</p>
   <p class="dim" style="margin:8px 0 0">The matrix router will take over <code>out</code>: see <code>kb/plans/matrix-router.md</code>.</p>

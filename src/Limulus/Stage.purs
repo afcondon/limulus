@@ -33,6 +33,7 @@ module Limulus.Stage
   , voiceLetter
   , voiceOfName
   , routeVoice
+  , repoint
   ) where
 
 import Prelude
@@ -233,3 +234,27 @@ routeVoice block = do
   case filter (_ /= "") (split (Pattern " ") (trim (CU.drop (at + 2) block))) of
     [ "vetula", v ] | v /= "key" -> Just v
     _ -> Nothing
+
+-- | **A voice's line, reading another progression** (as Vetula's
+-- | `StageCards.repoint`): the source after `vetula` or `chN` (a name,
+-- | quoted or not, or chords written in) becomes `"name"`; the sequence and
+-- | every `# …` are kept. `Nothing` for a line of neither form.
+repoint :: String -> String -> Maybe String
+repoint name line0 =
+  let line = trim line0
+      cs = CU.toCharArray line
+      headLen = Array.length (Array.takeWhile (_ /= ' ') cs)
+      spaces = Array.length (Array.takeWhile (_ == ' ') (Array.drop headLen cs))
+      start = headLen + spaces
+      rest = Array.drop start cs
+      srcLen = case Array.head rest of
+        Just '"' -> 1 + Array.length (Array.takeWhile (_ /= '"') (Array.drop 1 rest)) + 1
+        Just _ -> Array.length (Array.takeWhile (_ /= ' ') rest)
+        Nothing -> 0
+      headWord = CU.take headLen line
+      isCh = case stripPrefix (Pattern "ch") headWord of
+        Just d -> d /= "" && Array.all (\c -> c >= '0' && c <= '9') (CU.toCharArray d)
+        Nothing -> false
+  in if (headWord == "vetula" || isCh) && srcLen > 0
+       then Just (CU.take start line <> "\"" <> name <> "\"" <> CU.drop (start + srcLen) line)
+       else Nothing

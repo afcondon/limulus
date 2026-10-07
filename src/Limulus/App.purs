@@ -19,6 +19,8 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String (Pattern(..), indexOf, stripPrefix)
+import Data.String as Str
+import Data.String.CodeUnits as CU
 import Limulus.Stage as Stage
 import Limulus.Synced as Synced
 import Foreign.Object as Object
@@ -86,6 +88,7 @@ data Action
   | Answered Int Reply
   | FromBus Bus.Msg
   | SetEditor Editor.Editor
+  | DropProgression { name :: String, pos :: Int }
 
 component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
@@ -205,7 +208,8 @@ handleAction = case _ of
     H.modify_ _ { listener = Just listener }
     H.getHTMLElementRef editorRef >>= traverse_ \el -> liftEffect do
       ed <- Editor.create (HTMLElement.toElement el) starter
-        { onEval: HS.notify listener <<< Eval, onHush: HS.notify listener Hush }
+        { onEval: HS.notify listener <<< Eval, onHush: HS.notify listener Hush
+        , onDropProgression: HS.notify listener <<< DropProgression }
       Editor.focus ed
       HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
@@ -218,6 +222,27 @@ handleAction = case _ of
       liftEffect (HS.notify listener PollGhci)
       delay (Milliseconds 1500.0)
 
+  -- A progression dropped from Vetula. On a voice's block: the voice reads
+  -- it, its sequence and manner kept (the block is rewritten, not sent:
+  -- evaluating it is still the composer's). On a blank line: a new voice
+  -- naming it. Anywhere else: its name, quoted, where it fell.
+  DropProgression d -> do
+    st <- H.get
+    for_ st.editor \ed -> do
+      mblk <- liftEffect (Editor.blockAround ed d.pos)
+      case mblk of
+        Nothing -> do
+          obj <- freeVoice
+          liftEffect (Editor.insertAt ed d.pos (Stage.headOf obj <> " $ vetula \"" <> d.name <> "\"") true)
+        Just blk -> case Stage.stageLine blk.text, indexOf (Pattern "$") blk.text of
+          Just sl, Just at | Just body <- Stage.repoint d.name sl.body -> do
+            let text = case sl.obj of
+                  Just obj -> Stage.blockOf obj body
+                  Nothing -> Str.take (at + 1) blk.text <> " " <> body
+            liftEffect do
+              Editor.replace ed blk.from blk.to text
+              Editor.reveal ed blk.from (blk.from + CU.length text)
+          _, _ -> liftEffect (Editor.insertAt ed d.pos ("\"" <> d.name <> "\"") false)
   SetEditor ed -> H.modify_ _ { editor = Just ed }
 
   Eval b | Just sl <- Stage.stageLine b.text -> evalObj b sl
@@ -336,11 +361,7 @@ evalObj b sl = do
   obj <- case sl.obj of
     Just obj -> pure obj
     Nothing -> do
-      taken <- case st.editor of
-        Just ed -> liftEffect $ filterA (\k -> isJust <$> Editor.findBlock ed ("v" <> show k))
-                     (range 1 (Map.size st.objects + 2))
-        Nothing -> pure []
-      let obj = Stage.Card (Stage.freeCard st.objects (\k -> elem k taken))
+      obj <- freeVoice
       for_ st.editor \ed -> for_ (indexOf (Pattern "$") b.text) \at ->
         liftEffect $ Editor.replace ed b.from (b.from + at) (Stage.headOf obj <> " ")
       pure obj
@@ -480,3 +501,13 @@ note obj out ok = H.modify_ \s -> s
 -- | purerl-tidal's refusals start ERR or ERROR.
 isErr :: String -> Boolean
 isErr text = isJust (stripPrefix (Pattern "ERR") text)
+
+-- | The first voice neither on the stage nor heading a block in the buffer.
+freeVoice :: forall o. M o Stage.Obj
+freeVoice = do
+  st <- H.get
+  taken <- case st.editor of
+    Just ed -> liftEffect $ filterA (\k -> isJust <$> Editor.findBlock ed (Stage.voiceLetter k))
+                 (range 1 (Map.size st.objects + 2))
+    Nothing -> pure []
+  pure (Stage.Card (Stage.freeCard st.objects (\k -> elem k taken)))

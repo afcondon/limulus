@@ -152,6 +152,18 @@ export const _create = (parent, initial, handlers) => {
         // in a machine's panel the width is the page's to give: wrap
         ...(document.documentElement.classList.contains("embedded") ? [EditorView.lineWrapping] : []),
         EditorView.updateListener.of((u) => { if (u.docChanged) save(u.state.doc.toString()); }),
+        // a progression dragged from Vetula (its drawer row, a score title):
+        // Limulus decides what it means where it lands
+        EditorView.domEventHandlers({
+          drop: (e, v) => {
+            const name = e.dataTransfer ? e.dataTransfer.getData("application/x-vetula-progression") : "";
+            if (!name) return false;
+            e.preventDefault();
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            handlers.onDropProgression({ name, pos: pos == null ? v.state.doc.length : pos })();
+            return true;
+          },
+        }),
       ],
     }),
   });
@@ -195,6 +207,36 @@ export const _findBlock = (view, head) => {
     }
   }
   return null;
+};
+
+// The block (run of non-blank lines) around a position, or null on a
+// blank line.
+export const _blockAround = (view, pos) => {
+  const doc = view.state.doc;
+  const here = doc.lineAt(Math.max(0, Math.min(pos, doc.length)));
+  if (here.text.trim() === "") return null;
+  let first = here.number, last = here.number;
+  while (first > 1 && doc.line(first - 1).text.trim() !== "") first--;
+  while (last < doc.lines && doc.line(last + 1).text.trim() !== "") last++;
+  const from = doc.line(first).from, to = doc.line(last).to;
+  return { from, to, text: view.state.sliceDoc(from, to) };
+};
+
+// Text at a position, selected; as a block of its own (blank lines kept
+// either side) when `block`.
+export const _insertAt = (view, pos, text, block) => {
+  const doc = view.state.doc;
+  const p = Math.max(0, Math.min(pos, doc.length));
+  const line = doc.lineAt(p);
+  let before = "", after = "", at = p;
+  if (block) {
+    at = line.from;
+    if (line.number > 1 && doc.line(line.number - 1).text.trim() !== "") before = "\n";
+    if (line.number < doc.lines && doc.line(line.number + 1).text.trim() !== "") after = "\n";
+  }
+  view.dispatch({ changes: { from: at, insert: before + text + after }
+                , selection: { anchor: at + before.length, head: at + before.length + text.length }, scrollIntoView: true });
+  view.focus();
 };
 
 export const _replace = (view, from, to, text) => {

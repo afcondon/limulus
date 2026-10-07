@@ -18,6 +18,8 @@ module Limulus.Editor
   , replace
   , append
   , reveal
+  , blockAround
+  , insertAt
   ) where
 
 import Prelude
@@ -36,6 +38,7 @@ type Block = { text :: String, from :: Int, to :: Int }
 type Handlers =
   { onEval :: Block -> Effect Unit
   , onHush :: Effect Unit
+  , onDropProgression :: { name :: String, pos :: Int } -> Effect Unit
   }
 
 foreign import _create :: EffectFn3 Element String Handlers Editor
@@ -44,6 +47,16 @@ foreign import _findBlock :: EffectFn2 Editor String (Nullable Block)
 foreign import _replace :: EffectFn4 Editor Int Int String Unit
 foreign import _append :: EffectFn2 Editor String Unit
 foreign import _reveal :: EffectFn3 Editor Int Int Unit
+foreign import _blockAround :: EffectFn2 Editor Int (Nullable Block)
+foreign import _insertAt :: EffectFn4 Editor Int String Boolean Unit
+
+-- | The block around a position (`Nothing` on a blank line).
+blockAround :: Editor -> Int -> Effect (Maybe Block)
+blockAround ed pos = toMaybe <$> runEffectFn2 _blockAround ed pos
+
+-- | Insert text at a position and select it; `true`: as a block of its own.
+insertAt :: Editor -> Int -> String -> Boolean -> Effect Unit
+insertAt = runEffectFn4 _insertAt
 
 -- | Mount an editor in the element, starting from the text given unless this
 -- | browser has a buffer from last time.

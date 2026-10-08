@@ -9,8 +9,8 @@
 </head>
 <body>
   <script>
-    // Embedded in a machine's page (?embed): compact, and Escape asks the
-    // page to close the panel. Same origin, so the message names it.
+    // Embedded in a machine's page (?embed): compact. Escape stays the
+    // editor's own (it dismisses completions); the drawer's arrow closes it.
     if (new URLSearchParams(location.search).has("embed")) {
       document.documentElement.classList.add("embedded");
       // the page's own look, when it asks (`look=paper`: the machines')
@@ -22,9 +22,6 @@
         if (e.origin === location.origin && e.data && e.data.limulusFrame)
           document.documentElement.classList.toggle("flush", e.data.limulusFrame === "flush");
       });
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") window.parent.postMessage({ limulus: "close" }, location.origin);
-      }, true);
     }
   </script>
   <script src="./app.js?v=10"></script>

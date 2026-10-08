@@ -64,6 +64,9 @@ type State =
   -- as the machines' pages do; `sounding` is whether anything it started may
   -- still be playing (from the first block sent to the last hush).
   , bus :: Maybe Bus.Bus
+  -- embedded in a machine's page: part of that page, not a Limulus the
+  -- dashboard could bring forward, so it does not announce itself
+  , embedded :: Boolean
   , sounding :: Boolean
   -- the objects whose block differs from the stage and has been said so, so
   -- the note is made once, not at every write
@@ -98,7 +101,7 @@ component = H.mkComponent
       -- click away, for comparing the two.
       { engine: Purerl, ghci: Off, socket: Nothing, purerlUp: false, log: []
       , nextId: 0, pending: [], listener: Nothing, editor: Nothing, objects: Map.empty, progressions: Nothing
-      , bus: Nothing, sounding: false, noted: [] }
+      , bus: Nothing, embedded: false, sounding: false, noted: [] }
   , render
   , eval: H.mkEval H.defaultEval { handleAction = handleAction, initialize = Just Init }
   }
@@ -214,8 +217,11 @@ handleAction = case _ of
       HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
     liftEffect $ Bus.onMessage bus (HS.notify listener <<< FromBus)
-    liftEffect $ Bus.sayGoodbye bus [ "limulus" ]
-    H.modify_ _ { bus = Just bus }
+    emb <- liftEffect Editor.embedded
+    -- an embedded Limulus still hears Panic, but is not the dashboard's
+    -- Limulus: announced, it hid the dashboard's way to open one
+    unless emb (liftEffect $ Bus.sayGoodbye bus [ "limulus" ])
+    H.modify_ _ { bus = Just bus, embedded = emb }
     announce
     handleAction Connect
     void $ H.fork $ H.liftAff $ forever do
@@ -488,7 +494,7 @@ disagreed obj = do
 announce :: forall o. M o Unit
 announce = do
   st <- H.get
-  for_ st.bus \bus -> liftEffect $ Bus.post bus $
+  unless st.embedded $ for_ st.bus \bus -> liftEffect $ Bus.post bus $
     Bus.State { machine: "limulus", alias: Nothing, edited: false, playing: st.sounding }
 
 -- | A line in the log about an object, answering no block.

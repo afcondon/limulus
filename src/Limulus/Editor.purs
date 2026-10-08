@@ -20,6 +20,7 @@ module Limulus.Editor
   , reveal
   , blockAround
   , insertAt
+  , embedded
   ) where
 
 import Prelude
@@ -78,3 +79,10 @@ append = runEffectFn2 _append
 
 reveal :: Editor -> Int -> Int -> Effect Unit
 reveal = runEffectFn3 _reveal
+
+-- | Whether this Limulus is embedded in a machine's page (`?embed`), rather
+-- | than a tab of its own.
+foreign import _embedded :: Effect Boolean
+
+embedded :: Effect Boolean
+embedded = _embedded

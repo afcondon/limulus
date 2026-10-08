@@ -190,6 +190,7 @@ export const _create = (parent, initial, handlers) => {
 // into, or the page gives its frame the focus (see the window focus below).
 const embedded = () => document.documentElement.classList.contains("embedded");
 export const _focus = (view) => { if (!embedded()) view.focus(); };
+export const _embedded = () => embedded();
 
 // The block (run of non-blank lines) whose first line starts with `head`
 // followed by `$` (`v3 $ …`), as {from, to, text}, or null.

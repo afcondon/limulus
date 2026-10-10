@@ -10,7 +10,8 @@
 <body>
   <script>
     // Embedded in a machine's page (?embed): compact. Escape stays the
-    // editor's own (it dismisses completions); the drawer's arrow closes it.
+    // editor's own (it dismisses completions). Ctrl+` is the page's key for
+    // this drawer; the editor holds the keyboard while open, so pass it on.
     if (new URLSearchParams(location.search).has("embed")) {
       document.documentElement.classList.add("embedded");
       // the page's own look, when it asks (`look=paper`: the machines')
@@ -22,6 +23,12 @@
         if (e.origin === location.origin && e.data && e.data.limulusFrame)
           document.documentElement.classList.toggle("flush", e.data.limulusFrame === "flush");
       });
+      document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && !e.metaKey && e.code === "Backquote") {
+          e.preventDefault();
+          window.parent.postMessage({ limulus: "toggle" }, location.origin);
+        }
+      }, true);
     }
   </script>
   <script src="./app.js?v=10"></script>

@@ -44,6 +44,16 @@ function start() {
   };
   ghci.stdout.on("data", take);
   ghci.stderr.on("data", take);
+  // No ghc-tidal built (the install allows that): spawn reports only
+  // `error`, which unheard would kill the server. Haskell Tidal is off and
+  // Architeuthis still plays (installing-triggerfish#1).
+  ghci.on("error", (err) => {
+    console.log(`ghci unavailable (${err.message}); Haskell Tidal is off`);
+    ghci = null;
+    state = "off";
+    for (const w of waiting) w(`ghci unavailable: ${err.message}`);
+    waiting = [];
+  });
   ghci.on("exit", (code) => {
     console.log(`ghci exited (${code})`);
     ghci = null;

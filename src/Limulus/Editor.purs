@@ -39,8 +39,9 @@ type Block = { text :: String, from :: Int, to :: Int }
 type Handlers =
   { onEval :: Block -> Effect Unit
   , onHush :: Effect Unit
-  , onDropProgression :: { name :: String, pos :: Int } -> Effect Unit
-  , onDropRhythm :: { word :: String, pos :: Int } -> Effect Unit
+  -- a saved thing of one of `kinds` dropped at `pos` (Limulus.Drop)
+  , kinds :: Array String
+  , onDrop :: { kind :: String, payload :: String, pos :: Int } -> Effect Unit
   }
 
 foreign import _create :: EffectFn3 Element String Handlers Editor

@@ -152,20 +152,19 @@ export const _create = (parent, initial, handlers) => {
         // in a machine's panel the width is the page's to give: wrap
         ...(document.documentElement.classList.contains("embedded") ? [EditorView.lineWrapping] : []),
         EditorView.updateListener.of((u) => { if (u.docChanged) save(u.state.doc.toString()); }),
-        // a progression dragged from Vetula (its drawer row, a score title),
-        // or a rhythm from Balistes's drawer: Limulus decides what it means
-        // where it lands
+        // a saved thing dragged from a machine's drawer (Limulus.Drop.kinds,
+        // carried as application/x-<kind>): Limulus decides what it means
+        // where it lands; anything else drops as CodeMirror drops text
         EditorView.domEventHandlers({
           drop: (e, v) => {
             const dt = e.dataTransfer;
-            const name = dt ? dt.getData("application/x-vetula-progression") : "";
-            const word = dt ? dt.getData("application/x-balistes-rhythm") : "";
-            if (!name && !word) return false;
+            if (!dt) return false;
+            const kind = handlers.kinds.find((k) => dt.getData("application/x-" + k));
+            if (!kind) return false;
             e.preventDefault();
             const at = v.posAtCoords({ x: e.clientX, y: e.clientY });
             const pos = at == null ? v.state.doc.length : at;
-            if (name) handlers.onDropProgression({ name, pos })();
-            else handlers.onDropRhythm({ word, pos })();
+            handlers.onDrop({ kind, payload: dt.getData("application/x-" + kind), pos })();
             return true;
           },
         }),

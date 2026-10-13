@@ -19,9 +19,8 @@ import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String (Pattern(..), indexOf, stripPrefix)
-import Data.String as Str
 import Data.String.CodeUnits as CU
-import Limulus.Rhythm as Rhythm
+import Limulus.Drop as Drop
 import Limulus.Stage as Stage
 import Limulus.Synced as Synced
 import Foreign.Object as Object
@@ -92,8 +91,7 @@ data Action
   | Answered Int Reply
   | FromBus Bus.Msg
   | SetEditor Editor.Editor
-  | DropProgression { name :: String, pos :: Int }
-  | DropRhythm { word :: String, pos :: Int }
+  | Dropped { kind :: String, payload :: String, pos :: Int }
 
 component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
@@ -214,8 +212,8 @@ handleAction = case _ of
     H.getHTMLElementRef editorRef >>= traverse_ \el -> liftEffect do
       ed <- Editor.create (HTMLElement.toElement el) starter
         { onEval: HS.notify listener <<< Eval, onHush: HS.notify listener Hush
-        , onDropProgression: HS.notify listener <<< DropProgression
-        , onDropRhythm: HS.notify listener <<< DropRhythm }
+        , kinds: Drop.kinds
+        , onDrop: HS.notify listener <<< Dropped }
       Editor.focus ed
       HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
@@ -231,42 +229,23 @@ handleAction = case _ of
       liftEffect (HS.notify listener PollGhci)
       delay (Milliseconds 1500.0)
 
-  -- A progression dropped from Vetula. On a voice's block: the voice reads
-  -- it, its sequence and manner kept (the block is rewritten, not sent:
-  -- evaluating it is still the composer's). On a blank line: a new voice
-  -- naming it. Anywhere else: its name, quoted, where it fell.
-  DropProgression d -> do
+  -- A saved thing dropped from a machine's drawer: what it means where it
+  -- landed is Limulus.Drop's (onto its machine's block, that block changes;
+  -- elsewhere, a new block).
+  Dropped d -> do
     st <- H.get
     for_ st.editor \ed -> do
       mblk <- liftEffect (Editor.blockAround ed d.pos)
-      case mblk of
-        Nothing -> do
-          obj <- freeVoice
-          liftEffect (Editor.insertAt ed d.pos (Stage.headOf obj <> " $ vetula \"" <> d.name <> "\"") true)
-        Just blk -> case Stage.stageLine blk.text, indexOf (Pattern "$") blk.text of
-          Just sl, Just at | Just body <- Stage.repoint d.name sl.body -> do
-            let text = case sl.obj of
-                  Just obj -> Stage.blockOf obj body
-                  Nothing -> Str.take (at + 1) blk.text <> " " <> body
-            liftEffect do
-              Editor.replace ed blk.from blk.to text
-              Editor.reveal ed blk.from (blk.from + CU.length text)
-          _, _ -> liftEffect (Editor.insertAt ed d.pos ("\"" <> d.name <> "\"") false)
-  -- A rhythm dropped from Balistes. On a `balistes $` line: its word joins
-  -- the alternation (the block rewritten, not sent: evaluating it is still
-  -- the composer's). On a blank line: a new line playing it. Anywhere else:
-  -- its word, where it fell (inside a pattern, as a word goes).
-  DropRhythm d -> do
-    st <- H.get
-    for_ st.editor \ed -> do
-      mblk <- liftEffect (Editor.blockAround ed d.pos)
-      case mblk of
-        Nothing -> liftEffect (Editor.insertAt ed d.pos (Rhythm.balistesLine d.word) true)
-        Just blk -> case Rhythm.joinRhythm d.word blk.text of
-          Just text -> liftEffect do
-            Editor.replace ed blk.from blk.to text
-            Editor.reveal ed blk.from (blk.from + CU.length text)
-          Nothing -> liftEffect (Editor.insertAt ed d.pos d.word false)
+      voice <- freeVoice
+      case Drop.outcome { freeVoice: Stage.headOf voice } d.kind d.payload (map _.text mblk), mblk of
+        Drop.Rewrite text, Just blk -> liftEffect do
+          Editor.replace ed blk.from blk.to text
+          Editor.reveal ed blk.from (blk.from + CU.length text)
+        Drop.NewBlock text, _ -> liftEffect (Editor.insertAt ed d.pos text true)
+        Drop.Bare text, _ -> liftEffect (Editor.insertAt ed d.pos text false)
+        Drop.After text, Just blk -> liftEffect (Editor.insertAt ed blk.to ("\n\n" <> text) false)
+        Drop.Rewrite text, Nothing -> liftEffect (Editor.insertAt ed d.pos text true)
+        Drop.After text, Nothing -> liftEffect (Editor.insertAt ed d.pos text true)
   SetEditor ed -> H.modify_ _ { editor = Just ed }
 
   Eval b | Just sl <- Stage.stageLine b.text -> evalObj b sl

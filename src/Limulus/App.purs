@@ -21,6 +21,7 @@ import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.String (Pattern(..), indexOf, stripPrefix)
 import Data.String as Str
 import Data.String.CodeUnits as CU
+import Limulus.Rhythm as Rhythm
 import Limulus.Stage as Stage
 import Limulus.Synced as Synced
 import Foreign.Object as Object
@@ -92,6 +93,7 @@ data Action
   | FromBus Bus.Msg
   | SetEditor Editor.Editor
   | DropProgression { name :: String, pos :: Int }
+  | DropRhythm { word :: String, pos :: Int }
 
 component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
@@ -212,7 +214,8 @@ handleAction = case _ of
     H.getHTMLElementRef editorRef >>= traverse_ \el -> liftEffect do
       ed <- Editor.create (HTMLElement.toElement el) starter
         { onEval: HS.notify listener <<< Eval, onHush: HS.notify listener Hush
-        , onDropProgression: HS.notify listener <<< DropProgression }
+        , onDropProgression: HS.notify listener <<< DropProgression
+        , onDropRhythm: HS.notify listener <<< DropRhythm }
       Editor.focus ed
       HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
@@ -249,6 +252,21 @@ handleAction = case _ of
               Editor.replace ed blk.from blk.to text
               Editor.reveal ed blk.from (blk.from + CU.length text)
           _, _ -> liftEffect (Editor.insertAt ed d.pos ("\"" <> d.name <> "\"") false)
+  -- A rhythm dropped from Balistes. On a `balistes $` line: its word joins
+  -- the alternation (the block rewritten, not sent: evaluating it is still
+  -- the composer's). On a blank line: a new line playing it. Anywhere else:
+  -- its word, where it fell (inside a pattern, as a word goes).
+  DropRhythm d -> do
+    st <- H.get
+    for_ st.editor \ed -> do
+      mblk <- liftEffect (Editor.blockAround ed d.pos)
+      case mblk of
+        Nothing -> liftEffect (Editor.insertAt ed d.pos (Rhythm.balistesLine d.word) true)
+        Just blk -> case Rhythm.joinRhythm d.word blk.text of
+          Just text -> liftEffect do
+            Editor.replace ed blk.from blk.to text
+            Editor.reveal ed blk.from (blk.from + CU.length text)
+          Nothing -> liftEffect (Editor.insertAt ed d.pos d.word false)
   SetEditor ed -> H.modify_ _ { editor = Just ed }
 
   Eval b | Just sl <- Stage.stageLine b.text -> evalObj b sl

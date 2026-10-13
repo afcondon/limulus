@@ -152,15 +152,20 @@ export const _create = (parent, initial, handlers) => {
         // in a machine's panel the width is the page's to give: wrap
         ...(document.documentElement.classList.contains("embedded") ? [EditorView.lineWrapping] : []),
         EditorView.updateListener.of((u) => { if (u.docChanged) save(u.state.doc.toString()); }),
-        // a progression dragged from Vetula (its drawer row, a score title):
-        // Limulus decides what it means where it lands
+        // a progression dragged from Vetula (its drawer row, a score title),
+        // or a rhythm from Balistes's drawer: Limulus decides what it means
+        // where it lands
         EditorView.domEventHandlers({
           drop: (e, v) => {
-            const name = e.dataTransfer ? e.dataTransfer.getData("application/x-vetula-progression") : "";
-            if (!name) return false;
+            const dt = e.dataTransfer;
+            const name = dt ? dt.getData("application/x-vetula-progression") : "";
+            const word = dt ? dt.getData("application/x-balistes-rhythm") : "";
+            if (!name && !word) return false;
             e.preventDefault();
-            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
-            handlers.onDropProgression({ name, pos: pos == null ? v.state.doc.length : pos })();
+            const at = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            const pos = at == null ? v.state.doc.length : at;
+            if (name) handlers.onDropProgression({ name, pos })();
+            else handlers.onDropRhythm({ word, pos })();
             return true;
           },
         }),

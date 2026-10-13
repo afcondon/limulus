@@ -40,6 +40,7 @@ type Handlers =
   { onEval :: Block -> Effect Unit
   , onHush :: Effect Unit
   , onDropProgression :: { name :: String, pos :: Int } -> Effect Unit
+  , onDropRhythm :: { word :: String, pos :: Int } -> Effect Unit
   }
 
 foreign import _create :: EffectFn3 Element String Handlers Editor

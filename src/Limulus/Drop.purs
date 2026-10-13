@@ -10,6 +10,9 @@
 -- |   a Balistes beat       onto a `balistes $` line: joins its alternation
 -- |   an Odonus patch       onto an `odonus $ "<…>"` line: joins it
 -- |                         elsewhere: a new line playing it
+-- |   a Selene module       onto a `selene $` line: replaces what its bank
+-- |                         plays (as a drop on that bank on the page)
+-- |                         elsewhere: a new line on a free bank that takes it
 -- |
 -- | Onto a line of its machine that has no pattern of names to join (a
 -- | `balistes $ hush`, an `odonus $ rotate 2`), the new line goes after it.
@@ -25,8 +28,9 @@ module Limulus.Drop
 
 import Prelude
 
-import Data.Maybe (Maybe(..), maybe)
-import Data.String (Pattern(..), indexOf, lastIndexOf, trim)
+import Data.Array (filter, index)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.String (Pattern(..), indexOf, lastIndexOf, split, trim)
 import Data.String as Str
 import Data.String.CodeUnits as CU
 import Limulus.Stage as Stage
@@ -53,6 +57,7 @@ outcome ctx kind payload onto = case kind of
     Just text -> maybe (Bare ("\"" <> payload <> "\"")) Rewrite (repoint payload text)
   "balistes-beat" -> word "balistes"
   "odonus-patch" -> word "odonus"
+  "selene-module" -> selene (fields payload) onto
   _ -> Bare payload
   where
   word machine = case onto of
@@ -67,6 +72,40 @@ isLineOf :: String -> String -> Boolean
 isLineOf machine text = case CU.stripPrefix (Pattern machine) (trim text) of
   Just rest -> CU.take 1 (trim rest) == "$"
   Nothing -> false
+
+-- | A Selene module (`module`, `bank`, `suffix`, as the page's drag carries
+-- | them): onto a `selene $` line, the module on that line's bank, as a drop
+-- | on that bank on the page would be; elsewhere, a new line on the bank the
+-- | page suggests. `off` frees a line's bank.
+selene :: Array String -> Maybe String -> Outcome
+selene f onto = case onto >>= bankOfSelene of
+  Just bank -> Rewrite (seleneLine bank)
+  Nothing | Just text <- onto, isLineOf "selene" text -> After suggested
+          | bankHere == "" || moduleHere == "off" -> Bare moduleHere
+          | otherwise -> case onto of
+              Nothing -> NewBlock suggested
+              Just _ -> Bare moduleHere
+  where
+  moduleHere = fromMaybe "" (index f 0)
+  bankHere = fromMaybe "" (index f 1)
+  suffix = fromMaybe "" (index f 2)
+  suggested = seleneLine bankHere
+  seleneLine bank
+    | moduleHere == "off" = "selene $ off " <> bank
+    | otherwise = case indexOf (Pattern " ") moduleHere of
+        Just at -> "selene $ " <> Str.take at moduleHere <> " " <> bank <> Str.drop at moduleHere <> suffix
+        Nothing -> "selene $ " <> moduleHere <> " " <> bank <> suffix
+
+-- | The bank a `selene $ <kind> <bank> …` (or `selene $ off <bank>`) line
+-- | addresses.
+bankOfSelene :: String -> Maybe String
+bankOfSelene text = do
+  rest <- CU.stripPrefix (Pattern "selene") (trim text)
+  body <- CU.stripPrefix (Pattern "$") (trim rest)
+  index (filter (_ /= "") (split (Pattern " ") (trim body))) 1
+
+fields :: String -> Array String
+fields = split (Pattern "\t")
 
 -- | A Vetula voice's block with `name` as its progression, its sequence and
 -- | manner kept; Nothing for a block that is not a voice.

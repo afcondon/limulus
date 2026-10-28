@@ -170,9 +170,9 @@ h3 { font-size: 19px; font-weight: normal; color: var(--amber); margin: 14px 0 2
 
 <section>
   <h2>Harmony routes <span class="tag rig">rig</span></h2>
-  <p class="lede">What shapes Odonus's two quantisations: the same table the Dashboard's patch bay writes, one route a line.</p>
+  <p class="lede">What shapes Odonus's two quantisations: the table Vetula's "send to Odonus" writes and the Dashboard's chart draws, one route a line. A block of route lines is checked whole first: one bad line changes nothing and says which; otherwise they apply in order, and the reply gives the routing now.</p>
 <pre class="copy">route $ odonus.grid &lt;- vetula Q
-route $ odonus.out &lt;- harmony "&lt;c'maj9 a'min11&gt;/2"
+route $ odonus.out &lt;- scale "dorian" d
 route $ odonus.grid &lt;- none</pre>
   <table>
     <tr><td><code>odonus.grid</code></td><td class="gloss">what a cell's value maps onto: the melody's shape. A scale; or a chord, whose cells then play its arpeggios, octaves kept (a ninth stays a ninth)</td></tr>
@@ -181,7 +181,15 @@ route $ odonus.grid &lt;- none</pre>
     <tr><td><code>vetula Q</code></td><td class="gloss">Vetula's voice Q: its chords, as voiced. It still sounds where its line sends it (a muted voice still shapes)</td></tr>
     <tr><td><code>scale "PATTERN" ROOT</code></td><td class="gloss">a pattern of scale names, on a root</td></tr>
     <tr><td><code>harmony "PATTERN"</code></td><td class="gloss">a chord pattern, as voiced</td></tr>
+    <tr><td><code>chromatic</code></td><td class="gloss">no quantisation: every semitone on the Grid; each note as it is at the Output</td></tr>
     <tr><td><code>none</code></td><td class="gloss">no route: Grid follows Odonus's own scale; Output snaps to the Grid's set</td></tr>
+  </table>
+  <h3>Odonus's padlocks</h3>
+<pre class="copy">odonus $ lock grid
+odonus $ unlock out</pre>
+  <table>
+    <tr><td><code>lock grid</code> · <code>lock out</code> · <code>lock</code></td><td class="gloss">Odonus keeps its own there: a route to it stays (drawn held off) but is not followed. Bare <code>lock</code> is both; the padlocks by Odonus's pickers are the same switch, and a kept patch keeps its locks</td></tr>
+    <tr><td><code>unlock grid</code> · <code>unlock out</code> · <code>unlock</code></td><td class="gloss">let the routes take over again</td></tr>
   </table>
 </section>
 

@@ -250,6 +250,10 @@ handleAction = case _ of
         Drop.After text, Nothing -> liftEffect (Editor.insertAt ed d.pos text true)
   SetEditor ed -> H.modify_ _ { editor = Just ed }
 
+  -- several voices' statements in one block: each evaluated as its own
+  Eval b | parts <- Stage.statements b.text, Array.length parts > 1 ->
+    for_ parts \p -> handleAction (Eval { text: p.text, from: b.from + p.at, to: b.from + p.at + CU.length p.text })
+
   Eval b | Just sl <- Stage.stageLine b.text -> evalObj b sl
 
   Eval { text: block } -> do

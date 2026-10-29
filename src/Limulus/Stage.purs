@@ -22,6 +22,7 @@ module Limulus.Stage
   , ownerOf
   , StageLine
   , stageLine
+  , statements
   , StageFrame(..)
   , readFrame
   , isStageFrame
@@ -120,6 +121,31 @@ stageLine block = do
     "conspicillum" -> Just (Just Cloud)
     _ -> Just <$> (Card <$> voiceOfName head)
   pure { obj, body }
+
+-- | **A block of several stage statements** (`P $ hush` / `Q $ hush` /
+-- | `R $ hush`, AC 2026-10-29): split where a line starts with an object's
+-- | own head, each part with its offset in the block. A line of `# …` terms
+-- | stays with the statement above it. A block whose first line addresses
+-- | no object is one statement, as Tidal's are.
+statements :: String -> Array { text :: String, at :: Int }
+statements block =
+  if startsStatement (fromMaybe "" (Array.head lines)) then Array.foldl add [] (Array.zip lines starts)
+  else [ { text: block, at: 0 } ]
+  where
+  lines = split (Pattern "\n") block
+  -- where each line starts in the block
+  starts = Array.cons 0 (fromMaybe [] (Array.init (Array.scanl (\at l -> at + CU.length l + 1) 0 lines)))
+  add acc (Tuple l at) = case Array.unsnoc acc of
+    Just { init, last } | not (startsStatement l) -> Array.snoc init last { text = last.text <> "\n" <> l }
+    _ -> Array.snoc acc { text: l, at }
+
+-- | Whether a line opens a statement for one of the stage's objects.
+startsStatement :: String -> Boolean
+startsStatement l = case indexOf (Pattern "$") l of
+  Nothing -> false
+  Just i ->
+    let head = trim (CU.take i l)
+    in head == "vetula" || head == "conspicillum" || isJust (voiceOfName head)
 
 -- | What follows the `$`, one line, spaces trimmed.
 bodyOf :: String -> String

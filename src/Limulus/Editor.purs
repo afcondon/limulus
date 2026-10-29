@@ -15,6 +15,7 @@ module Limulus.Editor
   , create
   , focus
   , findBlock
+  , findBlocks
   , replace
   , append
   , reveal
@@ -25,6 +26,7 @@ module Limulus.Editor
 
 import Prelude
 
+import Data.Array as Array
 import Data.Maybe (Maybe)
 import Data.Nullable (Nullable, toMaybe)
 import Effect (Effect)
@@ -46,7 +48,7 @@ type Handlers =
 
 foreign import _create :: EffectFn3 Element String Handlers Editor
 foreign import _focus :: EffectFn1 Editor Unit
-foreign import _findBlock :: EffectFn2 Editor String (Nullable Block)
+foreign import _findBlocks :: EffectFn2 Editor String (Array Block)
 foreign import _replace :: EffectFn4 Editor Int Int String Unit
 foreign import _append :: EffectFn2 Editor String Unit
 foreign import _reveal :: EffectFn3 Editor Int Int Unit
@@ -69,9 +71,13 @@ create = runEffectFn3 _create
 focus :: Editor -> Effect Unit
 focus = runEffectFn1 _focus
 
--- | The block whose first line starts `head $` (`findBlock ed "v3"`).
+-- | The first block whose first line starts `head $` (`findBlock ed "Q"`).
 findBlock :: Editor -> String -> Effect (Maybe Block)
-findBlock ed head = toMaybe <$> runEffectFn2 _findBlock ed head
+findBlock ed head = Array.head <$> findBlocks ed head
+
+-- | Every block whose first line starts `head $`, in buffer order.
+findBlocks :: Editor -> String -> Effect (Array Block)
+findBlocks = runEffectFn2 _findBlocks
 
 replace :: Editor -> Int -> Int -> String -> Effect Unit
 replace = runEffectFn4 _replace

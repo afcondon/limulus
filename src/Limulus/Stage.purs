@@ -28,6 +28,7 @@ module Limulus.Stage
   , freeCard
   , bodyOf
   , blockOf
+  , objOfKey
   , tableProgressions
   , cardProgression
   , voiceLetter

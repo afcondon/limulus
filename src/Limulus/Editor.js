@@ -26,12 +26,12 @@ const dark = EditorView.theme({
 }, { dark: true });
 
 // A line's head word, when it addresses the rig rather than Tidal (`drums $`,
-// `odonus $`, `vetula $`, a card `v3 $`), shown inverted: phosphor on black is
+// `odonus $`, `vetula $`, a voice `Q $` or the old `v3 $`), shown inverted: phosphor on black is
 // Tidal, black on phosphor is the rig's own language (Limulus.Engine's
 // machineLine and the stage blocks). Inversion rather than a colour, since the
 // palette is already as green as it should be.
 const rigHead = new MatchDecorator({
-  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|balistes|selene|route|v\d+)(?=\s*\$)/g,
+  regexp: /(?<=^\s*)(?:drums|odonus|vetula|conspicillum|balistes|selene|route|[P-W]|v\d+)(?=\s*\$)/g,
   decoration: Decoration.mark({ class: "cm-rig-head" }),
 });
 const rigHeads = ViewPlugin.fromClass(class {
@@ -198,9 +198,11 @@ export const _embedded = () => embedded();
 
 // The block (run of non-blank lines) whose first line starts with `head`
 // followed by `$` (`v3 $ …`), as {from, to, text}, or null.
-export const _findBlock = (view, head) => {
+// Every block whose first line starts `head $`, in buffer order.
+export const _findBlocks = (view, head) => {
   const doc = view.state.doc;
   const re = new RegExp("^\\s*" + head.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\$");
+  const found = [];
   for (let n = 1; n <= doc.lines; n++) {
     const line = doc.line(n);
     const prevBlank = n === 1 || doc.line(n - 1).text.trim() === "";
@@ -208,10 +210,11 @@ export const _findBlock = (view, head) => {
       let last = n;
       while (last < doc.lines && doc.line(last + 1).text.trim() !== "") last++;
       const to = doc.line(last).to;
-      return { from: line.from, to, text: view.state.sliceDoc(line.from, to) };
+      found.push({ from: line.from, to, text: view.state.sliceDoc(line.from, to) });
+      n = last;
     }
   }
-  return null;
+  return found;
 };
 
 // The block (run of non-blank lines) around a position, or null on a

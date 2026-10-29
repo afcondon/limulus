@@ -13,17 +13,19 @@ import Prelude
 
 import Control.Monad.Rec.Class (forever)
 import Data.Array (cons, elem, filter, filterA, range, snoc, take, uncons)
+import Data.Array as Array
 import Data.Tuple (Tuple(..), fst)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (any, for_, traverse_)
 import Data.Map (Map)
 import Data.Map as Map
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe(..), isJust, isNothing, maybe)
 import Data.String (Pattern(..), indexOf, stripPrefix)
 import Data.String.CodeUnits as CU
 import Limulus.Drop as Drop
 import Limulus.Stage as Stage
 import Limulus.Synced as Synced
 import Foreign.Object as Object
+import Effect (Effect)
 import Effect.Aff (Aff, Milliseconds(..), delay)
 import Effect.Class (liftEffect)
 import Halogen as H
@@ -400,27 +402,35 @@ stageFrame = case _ of
     -- read fresh: every Limulus (the tab, a page's panel) shares it
     synced <- liftEffect Synced.load
     for_ st.editor \ed -> for_ (Map.toUnfoldable objects :: Array (Tuple Stage.Obj String)) \(Tuple obj t) -> do
-      mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
-      for_ mblock \blk -> do
-        let body = Stage.bodyOf blk.text
-        if body == t then agreed obj t
-        else when (Object.lookup (Stage.objKey obj) synced == Just body) do
+      blocks <- liftEffect (definitions ed obj)
+      if any (\blk -> Stage.bodyOf blk.text == t) blocks then agreed obj t
+      else case blocks of
+        [ blk ] | Object.lookup (Stage.objKey obj) synced == Just (Stage.bodyOf blk.text) -> do
           liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
           agreed obj t
+        _ -> pure unit
   Stage.Written obj text -> do
     st <- H.get
     synced <- liftEffect Synced.load
     let prev = Map.lookup obj st.objects
     H.modify_ _ { objects = maybe (Map.delete obj st.objects) (\t -> Map.insert obj t st.objects) text }
     for_ st.editor \ed -> do
-      mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
-      for_ mblock \blk -> case text of
+      blocks <- liftEffect (Editor.findBlocks ed (Stage.headOf obj))
+      defs <- liftEffect (definitions ed obj)
+      let
+        lastSaid = Object.lookup (Stage.objKey obj) synced
+        -- what the stage last said for it: shared by every Limulus, so a
+        -- second one (a page's panel) can't judge by its own stale copy
+        behind body = lastSaid == Just body || (lastSaid == Nothing && Just body == prev)
+      unless (Array.null blocks) case text of
         Nothing
-          | elem (Stage.bodyOf blk.text) [ "hush", "silence" ] -> note obj "voice removed" true
-          | otherwise -> note obj ("removed in " <> Stage.ownerOf obj <> "; this block no longer names anything") false
+          | any (\b -> elem (Stage.bodyOf b.text) [ "hush", "silence" ]) blocks -> note obj "voice removed" true
+          | otherwise -> note obj ("removed in " <> Stage.ownerOf obj <> "; evaluate this block to bring it back") false
         Just t
-          | Stage.bodyOf blk.text == t -> agreed obj t
-          | Just (Stage.bodyOf blk.text) == prev || Object.lookup (Stage.objKey obj) synced == Just (Stage.bodyOf blk.text) -> do
+          | any (\b -> Stage.bodyOf b.text == t) defs -> agreed obj t
+          -- kept in step only when it is the one way the coder wrote it:
+          -- two are alternatives, and none is ever rewritten (AC, 2026-10-29)
+          | [ blk ] <- defs, behind (Stage.bodyOf blk.text) -> do
               liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
               agreed obj t
           -- what the block was last in step with is unknown (it was refused):
@@ -447,9 +457,16 @@ stageFrame = case _ of
       Just _ | not was -> note obj (name <> " is saved in Vetula now; this voice plays it") true
       Just _ -> pure unit
   -- A page handed over a block (a mark, as code): add it at the end, shown.
+  -- A voice's line (handed over as its tile hushes it) is written as the
+  -- voice's block, and only where the buffer has none: a typed block is
+  -- already the way back, and is marked removed when the hush lands.
   Stage.Paste key text -> do
     st <- H.get
-    for_ st.editor \ed -> liftEffect (Editor.append ed text)
+    for_ st.editor \ed -> case Stage.objOfKey key of
+      Just obj -> do
+        mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
+        when (isNothing mblock) $ liftEffect (Editor.append ed (Stage.blockOf obj text))
+      Nothing -> liftEffect (Editor.append ed text)
     H.modify_ \s -> s
       { nextId = s.nextId + 1
       , log = take 60 (cons { id: s.nextId, engine: Purerl, block: key, reply: Just { ok: true, out: "added to the end of the buffer" } } s.log)
@@ -479,6 +496,14 @@ agreed obj text = do
   when (Object.lookup (Stage.objKey obj) synced /= Just text) $
     liftEffect (Synced.save (Object.insert (Stage.objKey obj) text synced))
   H.modify_ \s -> s { noted = filter (_ /= obj) s.noted }
+
+-- | The blocks that define `obj`: those headed by it, less the commands
+-- | (`P $ hush`). One is the voice's block, kept in step with the stage; more
+-- | than one are the coder's alternatives, evaluated in turn, and the tools
+-- | never rewrite any of them (`tools-never-edit-the-coders-text`).
+definitions :: Editor.Editor -> Stage.Obj -> Effect (Array Editor.Block)
+definitions ed obj =
+  Array.filter (\b -> not (elem (Stage.bodyOf b.text) [ "hush", "silence" ])) <$> Editor.findBlocks ed (Stage.headOf obj)
 
 -- | Forget what `obj`'s block agreed on: the stage refused it, so the block is
 -- | typing to keep, not text to bring up to date.

@@ -56,7 +56,10 @@ import Foreign.Object as Object
 import Simple.JSON (readJSON)
 
 -- | An object on the stage that Limulus edits as a block.
-data Obj = Card Int | Cloud
+-- | `Cloud l`: a Conspicillum layer, "a" to "d" (2026-11-10), each a cloud of
+-- | its own on the rig. `conspicillum $` is layer a, as it always was;
+-- | `conspicillum "b" $` is layer b.
+data Obj = Card Int | Cloud String
 
 derive instance Eq Obj
 derive instance Ord Obj
@@ -64,18 +67,34 @@ derive instance Ord Obj
 objKey :: Obj -> String
 objKey = case _ of
   Card n -> "vetula/v" <> show n
-  Cloud -> "conspicillum/line"
+  Cloud "a" -> "conspicillum/line"
+  Cloud l -> "conspicillum/line-" <> l
+
+cloudLayers :: Array String
+cloudLayers = [ "a", "b", "c", "d" ]
 
 objOfKey :: String -> Maybe Obj
 objOfKey key
-  | key == "conspicillum/line" = Just Cloud
+  | key == "conspicillum/line" = Just (Cloud "a")
+  | Just l <- stripPrefix (Pattern "conspicillum/line-") key, Array.elem l cloudLayers = Just (Cloud l)
   | otherwise = Card <$> (stripPrefix (Pattern "vetula/v") key >>= Int.fromString)
 
 -- | The block's head word: `Q` (a Vetula voice), `conspicillum`.
 headOf :: Obj -> String
 headOf = case _ of
   Card n -> voiceLetter n
-  Cloud -> "conspicillum"
+  Cloud "a" -> "conspicillum"
+  Cloud l -> "conspicillum \"" <> l <> "\""
+
+-- | The layer a block's head names: `conspicillum` is a, `conspicillum "b"`
+-- | is b (`"a"` written out is a too).
+cloudOfHead :: String -> Maybe String
+cloudOfHead head
+  | head == "conspicillum" = Just "a"
+  | otherwise = do
+      rest <- stripPrefix (Pattern "conspicillum") head
+      l <- stripPrefix (Pattern "\"") (trim rest) >>= stripSuffix (Pattern "\"")
+      if Array.elem l cloudLayers then Just l else Nothing
 
 -- | A Vetula voice's name: P..W (AC, 2026-10-06), so a number is only ever
 -- | a MIDI channel. Inside (the stage key) a voice is numbered, P = 1; as
@@ -96,7 +115,8 @@ voiceOfName s = case Array.elemIndex s voiceLetters of
 ownerOf :: Obj -> String
 ownerOf = case _ of
   Card _ -> "Vetula"
-  Cloud -> "Conspicillum"
+  Cloud "a" -> "Conspicillum"
+  Cloud l -> "Conspicillum's layer " <> l
 
 -- | A stage block: which object (`Nothing` for `vetula $ ch…`, a new card)
 -- | and its line.
@@ -116,9 +136,8 @@ stageLine block = do
     -- a cue for the rig
     "vetula" | isJust (stripPrefix (Pattern "ch") body) -> Just Nothing
     "vetula" -> Nothing
-    -- `conspicillum $ hush` is for the rig, not a line
-    "conspicillum" | body == "hush" -> Nothing
-    "conspicillum" -> Just (Just Cloud)
+    -- `conspicillum $ hush` (or a layer's) is for the rig, not a line
+    _ | Just l <- cloudOfHead head -> if body == "hush" then Nothing else Just (Just (Cloud l))
     _ -> Just <$> (Card <$> voiceOfName head)
   pure { obj, body }
 
@@ -145,7 +164,7 @@ startsStatement l = case indexOf (Pattern "$") l of
   Nothing -> false
   Just i ->
     let head = trim (CU.take i l)
-    in head == "vetula" || head == "conspicillum" || isJust (voiceOfName head)
+    in head == "vetula" || isJust (cloudOfHead head) || isJust (voiceOfName head)
 
 -- | What follows the `$`, one line, spaces trimmed.
 bodyOf :: String -> String

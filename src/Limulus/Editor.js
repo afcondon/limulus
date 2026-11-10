@@ -1,4 +1,4 @@
-import { EditorView, keymap, lineNumbers, drawSelection, Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers, drawSelection, Decoration, MatchDecorator, ViewPlugin, WidgetType } from "@codemirror/view";
 import { EditorState, StateField, StateEffect } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab, toggleLineComment } from "@codemirror/commands";
 import { bracketMatching, StreamLanguage, syntaxHighlighting, HighlightStyle, foldService, foldGutter, codeFolding, foldKeymap } from "@codemirror/language";
@@ -85,6 +85,65 @@ const flashField = StateField.define({
   provide: (f) => EditorView.decorations.from(f),
 });
 
+// The active block of each stage object (2026-11-10): the one last evaluated,
+// or the one the stage was found to agree with. Several blocks may define one
+// object (the coder's alternatives); exactly one is active. It is tracked by
+// position, mapped through every edit, so editing it keeps it active and text
+// matching decides nothing. `behind`: a page has changed the object since, and
+// the block does not say so; nothing is rewritten until "take" is pressed.
+const setActive = StateEffect.define();   // { key, pos, behind }
+const clearActive = StateEffect.define(); // key
+let onTake = () => {};
+class TakeWidget extends WidgetType {
+  constructor(key) { super(); this.key = key; }
+  eq(o) { return o.key === this.key; }
+  toDOM() {
+    const el = document.createElement("span");
+    el.className = "cm-behind-note";
+    el.textContent = "the page has moved on · ";
+    const b = document.createElement("button");
+    b.className = "cm-take";
+    b.textContent = "take";
+    b.title = "Replace this block with what the page is playing";
+    b.addEventListener("mousedown", (e) => { e.preventDefault(); onTake(this.key); });
+    el.appendChild(b);
+    return el;
+  }
+  ignoreEvent() { return true; }
+}
+const activeField = StateField.define({
+  create: () => new Map(),
+  update(m, tr) {
+    let next = m;
+    if (!tr.changes.empty) {
+      next = new Map();
+      for (const [key, a] of m) next.set(key, { ...a, pos: tr.changes.mapPos(a.pos, -1) });
+    }
+    for (const e of tr.effects) {
+      if (e.is(setActive)) {
+        if (next === m) next = new Map(m);
+        const line = tr.state.doc.lineAt(Math.min(e.value.pos, tr.state.doc.length));
+        next.set(e.value.key, { pos: line.from, behind: e.value.behind });
+      } else if (e.is(clearActive)) {
+        if (next === m) next = new Map(m);
+        next.delete(e.value);
+      }
+    }
+    return next;
+  },
+  provide: (f) => EditorView.decorations.compute([f], (state) => {
+    const ranges = [];
+    for (const [key, a] of state.field(f)) {
+      if (a.pos > state.doc.length) continue;
+      const line = state.doc.lineAt(a.pos);
+      ranges.push(Decoration.line({ class: a.behind ? "cm-active cm-behind" : "cm-active" }).range(line.from));
+      if (a.behind) ranges.push(Decoration.widget({ widget: new TakeWidget(key), side: 1 }).range(line.to));
+    }
+    ranges.sort((x, y) => x.from - y.from);
+    return Decoration.set(ranges, true);
+  }),
+});
+
 // The selection if there is one, else the run of non-blank lines around the
 // cursor: a block, the unit Tidal's editors evaluate.
 const blockAt = (state) => {
@@ -112,6 +171,7 @@ const save = (text) => {
 };
 
 export const _create = (parent, initial, handlers) => {
+  onTake = (key) => handlers.onTake(key)();
   const evaluate = (view) => {
     const range = blockAt(view.state);
     if (!range) return true;
@@ -145,6 +205,7 @@ export const _create = (parent, initial, handlers) => {
         syntaxHighlighting(style),
         dark,
         flashField,
+        activeField,
         rigHeads,
         folds,
         codeFolding({ placeholderText: "…" }),
@@ -263,4 +324,23 @@ export const _append = (view, text) => {
 // Select a range and scroll it into view.
 export const _reveal = (view, from, to) => {
   view.dispatch({ selection: { anchor: from, head: to }, scrollIntoView: true });
+};
+
+// Mark the block starting at `pos` as `key`'s active block (behind or not).
+export const _setActive = (view, key, pos, behind) => {
+  view.dispatch({ effects: setActive.of({ key, pos, behind }) });
+};
+export const _clearActive = (view, key) => {
+  view.dispatch({ effects: clearActive.of(key) });
+};
+// `key`'s active block, if it is still a block headed `head $`: deleting or
+// re-heading it ends its being active.
+export const _active = (view, key, head) => {
+  const a = view.state.field(activeField).get(key);
+  if (!a || a.pos > view.state.doc.length) return null;
+  const blk = _blockAround(view, a.pos);
+  if (!blk) return null;
+  const re = new RegExp("^\\s*" + head.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\$");
+  if (blk.from !== view.state.doc.lineAt(a.pos).from || !re.test(blk.text)) return null;
+  return { ...blk, behind: a.behind };
 };

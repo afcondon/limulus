@@ -204,3 +204,16 @@ footer { padding: 6px 16px; border-top: 1px solid var(--fg-rule); color: var(--f
 .swiss .cm-selectionBackground, .swiss .cm-focused .cm-selectionBackground { background: rgba(200,55,30,.14) !important; }
 .swiss .cm-flash { background: rgba(200,55,30,.25); color: #000; }
 .swiss .who { font-size: 11px; letter-spacing: 0.04em; }
+
+/* ── the active block (2026-11-10): which alternative a stage object is ────
+   playing. A bar in the margin; dashed, with "take", when a page has moved
+   on since. */
+.cm-active { box-shadow: inset 3px 0 0 var(--fg-bright); }
+.cm-active.cm-behind { box-shadow: inset 3px 0 0 var(--amber); }
+.cm-behind-note { margin-left: 1.2em; color: var(--amber); font-style: italic; font-size: .9em; }
+.cm-take { font: inherit; font-style: normal; color: var(--bg); background: var(--amber); border: 0; border-radius: 3px; padding: 0 .5em; cursor: pointer; }
+.paper .cm-active { box-shadow: inset 3px 0 0 #111; }
+.paper .cm-active.cm-behind, .swiss .cm-active.cm-behind { box-shadow: inset 3px 0 0 #c8371e; }
+.paper .cm-behind-note, .swiss .cm-behind-note { color: #c8371e; }
+.paper .cm-take, .swiss .cm-take { background: #c8371e; color: #fff; }
+.swiss .cm-active { box-shadow: inset 3px 0 0 #141414; }

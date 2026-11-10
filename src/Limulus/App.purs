@@ -5,14 +5,20 @@
 -- | leave the other engine playing, and so does Panic from any Atlantis page.
 -- |
 -- | Vetula's cards are lines here too (`v3 $ …`, `Limulus.Stage`): the page
--- | subscribes to the rig's stage, writes a card when its block is evaluated,
--- | and keeps a card's block in step when the card changes in Vetula.
+-- | subscribes to the rig's stage and writes a card when its block is evaluated.
+-- |
+-- | **The active block** (2026-11-10). Several blocks may define one object,
+-- | the coder's alternatives; the one last evaluated is the active one,
+-- | marked in the margin and tracked by position, not by matching text. When
+-- | a page changes the object, the active block is marked behind and left as
+-- | typed: "take" on it, or the page's → Limulus, writes the page's version
+-- | in. The text and the page are never synced behind the coder's back.
 module Limulus.App (component) where
 
 import Prelude
 
 import Control.Monad.Rec.Class (forever)
-import Data.Array (cons, elem, filter, filterA, range, snoc, take, uncons)
+import Data.Array (cons, elem, filter, filterA, find, last, range, snoc, take, uncons)
 import Data.Array as Array
 import Data.Tuple (Tuple(..), fst)
 import Data.Foldable (any, for_, traverse_)
@@ -94,6 +100,7 @@ data Action
   | FromBus Bus.Msg
   | SetEditor Editor.Editor
   | Dropped { kind :: String, payload :: String, pos :: Int }
+  | Take String
 
 component :: forall q i o. H.Component q i o Aff
 component = H.mkComponent
@@ -215,7 +222,8 @@ handleAction = case _ of
       ed <- Editor.create (HTMLElement.toElement el) starter
         { onEval: HS.notify listener <<< Eval, onHush: HS.notify listener Hush
         , kinds: Drop.kinds
-        , onDrop: HS.notify listener <<< Dropped }
+        , onDrop: HS.notify listener <<< Dropped
+        , onTake: HS.notify listener <<< Take }
       Editor.focus ed
       HS.notify listener (SetEditor ed)
     bus <- liftEffect Bus.open
@@ -249,6 +257,13 @@ handleAction = case _ of
         Drop.Rewrite text, Nothing -> liftEffect (Editor.insertAt ed d.pos text true)
         Drop.After text, Nothing -> liftEffect (Editor.insertAt ed d.pos text true)
   SetEditor ed -> H.modify_ _ { editor = Just ed }
+
+  -- "take" on a behind block: the page's version replaces it
+  Take key -> for_ (Stage.objOfKey key) \obj -> do
+    st <- H.get
+    for_ st.editor \ed -> for_ (Map.lookup obj st.objects) \t -> do
+      mact <- liftEffect (activeOf ed obj)
+      for_ mact \a -> takeInto ed obj a t
 
   -- several voices' statements in one block: each evaluated as its own
   Eval b | parts <- Stage.statements b.text, Array.length parts > 1 ->
@@ -381,6 +396,8 @@ evalObj b sl = do
     , objects = Map.insert obj sl.body s.objects
     }
   agreed obj sl.body
+  -- the block evaluated is the object's active one, whichever alternative
+  for_ st.editor \ed -> liftEffect (Editor.setActive ed (Stage.objKey obj) b.from false)
   sendLine id ("stage-text " <> Stage.objKey obj <> " " <> sl.body)
   unknownName obj sl.body
 
@@ -403,48 +420,22 @@ stageFrame = case _ of
   Stage.Table objects -> do
     H.modify_ _ { objects = objects }
     st <- H.get
-    -- read fresh: every Limulus (the tab, a page's panel) shares it
-    synced <- liftEffect Synced.load
-    for_ st.editor \ed -> for_ (Map.toUnfoldable objects :: Array (Tuple Stage.Obj String)) \(Tuple obj t) -> do
-      blocks <- liftEffect (definitions ed obj)
-      if any (\blk -> Stage.bodyOf blk.text == t) blocks then agreed obj t
-      else case blocks of
-        [ blk ] | Object.lookup (Stage.objKey obj) synced == Just (Stage.bodyOf blk.text) -> do
-          liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
-          agreed obj t
-        _ -> pure unit
+    for_ st.editor \ed -> for_ (Map.toUnfoldable objects :: Array (Tuple Stage.Obj String)) \(Tuple obj t) ->
+      settle ed obj t
   Stage.Written obj text -> do
     st <- H.get
-    synced <- liftEffect Synced.load
-    let prev = Map.lookup obj st.objects
     H.modify_ _ { objects = maybe (Map.delete obj st.objects) (\t -> Map.insert obj t st.objects) text }
     for_ st.editor \ed -> do
       blocks <- liftEffect (Editor.findBlocks ed (Stage.headOf obj))
-      defs <- liftEffect (definitions ed obj)
-      let
-        lastSaid = Object.lookup (Stage.objKey obj) synced
-        -- what the stage last said for it: shared by every Limulus, so a
-        -- second one (a page's panel) can't judge by its own stale copy
-        behind body = lastSaid == Just body || (lastSaid == Nothing && Just body == prev)
       unless (Array.null blocks) case text of
         Nothing
           | any (\b -> elem (Stage.bodyOf b.text) [ "hush", "silence" ]) blocks -> note obj "voice removed" true
-          | otherwise -> note obj ("removed in " <> Stage.ownerOf obj <> "; evaluate this block to bring it back") false
-        Just t
-          | any (\b -> Stage.bodyOf b.text == t) defs -> agreed obj t
-          -- kept in step only when it is the one way the coder wrote it:
-          -- two are alternatives, and none is ever rewritten (AC, 2026-10-29)
-          | [ blk ] <- defs, behind (Stage.bodyOf blk.text) -> do
-              liftEffect (Editor.replace ed blk.from blk.to (Stage.blockOf obj t))
-              agreed obj t
-          -- what the block was last in step with is unknown (it was refused):
-          -- keep the typing, to be fixed and evaluated again
-          | prev == Nothing -> pure unit
-          -- an edit in hand: said once, not at every write
-          | elem obj st.noted -> pure unit
           | otherwise -> do
-              H.modify_ \s -> s { noted = cons obj s.noted }
-              note obj ("changed in " <> Stage.ownerOf obj <> "; this block differs, so it was left alone (evaluate it to make yours the one)") false
+              liftEffect (Editor.clearActive ed (Stage.objKey obj))
+              note obj ("removed in " <> Stage.ownerOf obj <> "; evaluate this block to bring it back") false
+        -- never rewritten: the active block is marked behind instead, and
+        -- "take" (or → Limulus on the page) brings it up to date
+        Just t -> settle ed obj t
   -- A progression saved or deleted in Vetula: the voices naming it say what
   -- that did to them.
   Stage.Progression name text -> do
@@ -475,16 +466,27 @@ stageFrame = case _ of
       { nextId = s.nextId + 1
       , log = take 60 (cons { id: s.nextId, engine: Purerl, block: key, reply: Just { ok: true, out: "added to the end of the buffer" } } s.log)
       }
+  -- A page's "→ Limulus": its version goes into the active block, or
+  -- becomes a block of its own if none is active.
   Stage.Open obj -> do
     st <- H.get
-    for_ st.editor \ed -> do
-      mblock <- liftEffect (Editor.findBlock ed (Stage.headOf obj))
-      case mblock, Map.lookup obj st.objects of
-        Just blk, _ -> liftEffect (Editor.reveal ed blk.from blk.to)
-        Nothing, Just t -> do
-          liftEffect (Editor.append ed (Stage.blockOf obj t))
-          agreed obj t
-        Nothing, Nothing -> note obj (Stage.ownerOf obj <> " asked to show it, but the stage does not have it") false
+    for_ st.editor \ed -> case Map.lookup obj st.objects of
+      Nothing -> note obj (Stage.ownerOf obj <> " asked to show it, but the stage does not have it") false
+      Just t -> do
+        mact <- liftEffect (activeOf ed obj)
+        case mact of
+          Just a -> takeInto ed obj a t
+          Nothing -> do
+            defs <- liftEffect (definitions ed obj)
+            case find (\blk -> Stage.bodyOf blk.text == t) defs of
+              Just blk -> do
+                liftEffect (Editor.setActive ed (Stage.objKey obj) blk.from false)
+                liftEffect (Editor.reveal ed blk.from blk.to)
+              Nothing -> do
+                liftEffect (Editor.append ed (Stage.blockOf obj t))
+                added <- liftEffect (Editor.findBlocks ed (Stage.headOf obj))
+                for_ (last added) \blk -> liftEffect (Editor.setActive ed (Stage.objKey obj) blk.from false)
+            agreed obj t
   -- A refused block is left as typed: forget what the stage said for it, so
   -- the real line, republished by its page, does not overwrite it.
   Stage.Rejected obj reason -> do
@@ -501,10 +503,48 @@ agreed obj text = do
     liftEffect (Synced.save (Object.insert (Stage.objKey obj) text synced))
   H.modify_ \s -> s { noted = filter (_ /= obj) s.noted }
 
+-- | Which block is `obj`'s active one, and whether it is behind the stage's
+-- | `t`, decided without touching the text: the active block if there is one;
+-- | else a block saying `t`; else the only block, if it says what the stage
+-- | last agreed on (it is behind: a page moved on while Limulus was closed).
+settle :: forall o. Editor.Editor -> Stage.Obj -> String -> M o Unit
+settle ed obj t = do
+  let key = Stage.objKey obj
+  mact <- liftEffect (activeOf ed obj)
+  case mact of
+    Just a -> do
+      let inStep = Stage.bodyOf a.text == t
+      liftEffect (Editor.setActive ed key a.from (not inStep))
+      when inStep (agreed obj t)
+    Nothing -> do
+      defs <- liftEffect (definitions ed obj)
+      synced <- liftEffect Synced.load
+      case find (\blk -> Stage.bodyOf blk.text == t) defs of
+        Just blk -> do
+          liftEffect (Editor.setActive ed key blk.from false)
+          agreed obj t
+        Nothing -> case defs of
+          [ blk ] | Object.lookup key synced == Just (Stage.bodyOf blk.text) ->
+            liftEffect (Editor.setActive ed key blk.from true)
+          _ -> pure unit
+
+-- | Write the stage's `t` into the active block, which is in step after.
+takeInto :: forall o. Editor.Editor -> Stage.Obj -> Editor.Active -> String -> M o Unit
+takeInto ed obj a t = do
+  let text = Stage.blockOf obj t
+  liftEffect do
+    when (a.text /= text) (Editor.replace ed a.from a.to text)
+    Editor.setActive ed (Stage.objKey obj) a.from false
+    Editor.reveal ed a.from (a.from + CU.length text)
+  agreed obj t
+
+activeOf :: Editor.Editor -> Stage.Obj -> Effect (Maybe Editor.Active)
+activeOf ed obj = Editor.active ed (Stage.objKey obj) (Stage.headOf obj)
+
 -- | The blocks that define `obj`: those headed by it, less the commands
--- | (`P $ hush`). One is the voice's block, kept in step with the stage; more
--- | than one are the coder's alternatives, evaluated in turn, and the tools
--- | never rewrite any of them (`tools-never-edit-the-coders-text`).
+-- | (`P $ hush`). More than one are the coder's alternatives, evaluated in
+-- | turn; the active one is marked, and only "take" or a page's → Limulus
+-- | ever rewrites it (`tools-never-edit-the-coders-text`).
 definitions :: Editor.Editor -> Stage.Obj -> Effect (Array Editor.Block)
 definitions ed obj =
   Array.filter (\b -> not (elem (Stage.bodyOf b.text) [ "hush", "silence" ])) <$> Editor.findBlocks ed (Stage.headOf obj)

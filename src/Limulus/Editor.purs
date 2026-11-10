@@ -22,6 +22,10 @@ module Limulus.Editor
   , blockAround
   , insertAt
   , embedded
+  , Active
+  , setActive
+  , clearActive
+  , active
   ) where
 
 import Prelude
@@ -44,7 +48,29 @@ type Handlers =
   -- a saved thing of one of `kinds` dropped at `pos` (Limulus.Drop)
   , kinds :: Array String
   , onDrop :: { kind :: String, payload :: String, pos :: Int } -> Effect Unit
+  -- "take" pressed on a behind block: the object's stage key
+  , onTake :: String -> Effect Unit
   }
+
+-- | A stage object's active block: the one last evaluated, or found to agree
+-- | with the stage. `behind`: a page has changed the object since.
+type Active = { text :: String, from :: Int, to :: Int, behind :: Boolean }
+
+foreign import _setActive :: EffectFn4 Editor String Int Boolean Unit
+foreign import _clearActive :: EffectFn2 Editor String Unit
+foreign import _active :: EffectFn3 Editor String String (Nullable Active)
+
+-- | Make the block starting at a position the object's (by stage key) active
+-- | one, and say whether it is behind.
+setActive :: Editor -> String -> Int -> Boolean -> Effect Unit
+setActive = runEffectFn4 _setActive
+
+clearActive :: Editor -> String -> Effect Unit
+clearActive = runEffectFn2 _clearActive
+
+-- | The object's active block (stage key, head), while it is still one.
+active :: Editor -> String -> String -> Effect (Maybe Active)
+active ed key head = toMaybe <$> runEffectFn3 _active ed key head
 
 foreign import _create :: EffectFn3 Element String Handlers Editor
 foreign import _focus :: EffectFn1 Editor Unit

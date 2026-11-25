@@ -2,7 +2,7 @@
 -- |
 -- | The same buffer can be sent to Haskell Tidal or to purerl-tidal; that is
 -- | the point of the page. Hush silences both, since a flipped buffer can
--- | leave the other engine playing, and so does Panic from any Atlantis page.
+-- | leave the other engine playing, and so does Hush from any Atlantis page.
 -- |
 -- | Vetula's cards are lines here too (`v3 $ …`, `Limulus.Stage`): the page
 -- | subscribes to the rig's stage and writes a card when its block is evaluated.
@@ -229,7 +229,7 @@ handleAction = case _ of
     bus <- liftEffect Bus.open
     liftEffect $ Bus.onMessage bus (HS.notify listener <<< FromBus)
     emb <- liftEffect Editor.embedded
-    -- an embedded Limulus still hears Panic, but is not the dashboard's
+    -- an embedded Limulus still hears Hush, but is not the dashboard's
     -- Limulus: announced, it hid the dashboard's way to open one
     unless emb (liftEffect $ Bus.sayGoodbye bus [ "limulus" ])
     H.modify_ _ { bus = Just bus, embedded = emb }
@@ -360,7 +360,7 @@ handleAction = case _ of
     H.modify_ \s -> s { log = map (\e -> if e.id == id then e { reply = Just reply } else e) s.log }
 
   FromBus msg -> case msg of
-    Bus.Panic -> handleAction Hush
+    Bus.Hush -> handleAction Hush
     Bus.Hello -> announce
     _ -> pure unit
 
@@ -399,6 +399,18 @@ evalObj b sl = do
   -- the block evaluated is the object's active one, whichever alternative
   for_ st.editor \ed -> liftEffect (Editor.setActive ed (Stage.objKey obj) b.from false)
   sendLine id ("stage-text " <> Stage.objKey obj <> " " <> sl.body)
+  -- A voice evaluated is a voice meant to sound. The rig holds Vetula's cards
+  -- but walks them only while Vetula plays, so after a hush or a Stop a new
+  -- line was accepted and met with silence (AC, 2026-11-13: "this bites me
+  -- EVERY time"). So evaluating a voice also plays Vetula, as its page's Play
+  -- does; it changes nothing when Vetula is already playing. Its reply has no
+  -- entry in the log to answer, so it is not shown.
+  case obj of
+    Stage.Card _ | sl.body /= "hush" && sl.body /= "silence" -> do
+      quiet <- H.gets _.nextId
+      H.modify_ _ { nextId = quiet + 1 }
+      sendPurerl quiet "vetula $ play"
+    _ -> pure unit
   unknownName obj sl.body
 
 -- | A voice naming a progression Vetula has not saved is silent: say so.
